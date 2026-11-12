@@ -1,0 +1,5 @@
+[
+  "CREATE TABLE items(id INTEGER PRIMARY KEY,name TEXT NOT NULL CHECK(length(trim(name))>0),stock INTEGER NOT NULL CHECK(stock>=0))",
+  "CREATE TABLE reservations(id INTEGER PRIMARY KEY,item_id INTEGER NOT NULL REFERENCES items(id),quantity INTEGER NOT NULL CHECK(quantity>0),note TEXT NOT NULL)",
+  "PRAGMA user_version=1"
+]

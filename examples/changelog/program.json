@@ -1,0 +1,1956 @@
+{
+  "format": "mairg-app-1",
+  "functions": [
+    {
+      "id": 0,
+      "params": [
+        "str"
+      ],
+      "result": "str",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        }
+      ],
+      "return": 0
+    },
+    {
+      "id": 1,
+      "params": [
+        "str"
+      ],
+      "result": "any",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "const",
+          "args": [],
+          "value": "invalid_version"
+        },
+        {
+          "id": 2,
+          "op": "const",
+          "args": [],
+          "value": "Version must be nonblank, single-line and at most 64 characters"
+        },
+        {
+          "id": 3,
+          "op": "fail",
+          "args": [
+            1,
+            2
+          ]
+        }
+      ],
+      "return": 3
+    },
+    {
+      "id": 2,
+      "params": [
+        "str"
+      ],
+      "result": "str",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "text.trim",
+          "args": [
+            0
+          ]
+        },
+        {
+          "id": 2,
+          "op": "length",
+          "args": [
+            1
+          ]
+        },
+        {
+          "id": 3,
+          "op": "const",
+          "args": [],
+          "value": 0
+        },
+        {
+          "id": 4,
+          "op": "gt",
+          "args": [
+            2,
+            3
+          ]
+        },
+        {
+          "id": 5,
+          "op": "length",
+          "args": [
+            1
+          ]
+        },
+        {
+          "id": 6,
+          "op": "const",
+          "args": [],
+          "value": 64
+        },
+        {
+          "id": 7,
+          "op": "le",
+          "args": [
+            5,
+            6
+          ]
+        },
+        {
+          "id": 8,
+          "op": "and",
+          "args": [
+            4,
+            7
+          ]
+        },
+        {
+          "id": 9,
+          "op": "const",
+          "args": [],
+          "value": "\n"
+        },
+        {
+          "id": 10,
+          "op": "contains",
+          "args": [
+            1,
+            9
+          ]
+        },
+        {
+          "id": 11,
+          "op": "not",
+          "args": [
+            10
+          ]
+        },
+        {
+          "id": 12,
+          "op": "and",
+          "args": [
+            8,
+            11
+          ]
+        },
+        {
+          "id": 13,
+          "op": "const",
+          "args": [],
+          "value": "\r"
+        },
+        {
+          "id": 14,
+          "op": "contains",
+          "args": [
+            1,
+            13
+          ]
+        },
+        {
+          "id": 15,
+          "op": "not",
+          "args": [
+            14
+          ]
+        },
+        {
+          "id": 16,
+          "op": "and",
+          "args": [
+            12,
+            15
+          ]
+        },
+        {
+          "id": 17,
+          "op": "choose",
+          "args": [
+            16,
+            1
+          ],
+          "then": 0,
+          "else": 1
+        }
+      ],
+      "return": 17
+    },
+    {
+      "id": 3,
+      "params": [
+        "str"
+      ],
+      "result": "str",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "const",
+          "args": [],
+          "value": "\\"
+        },
+        {
+          "id": 2,
+          "op": "const",
+          "args": [],
+          "value": "\\\\"
+        },
+        {
+          "id": 3,
+          "op": "text.replace",
+          "args": [
+            0,
+            1,
+            2
+          ]
+        },
+        {
+          "id": 4,
+          "op": "const",
+          "args": [],
+          "value": "`"
+        },
+        {
+          "id": 5,
+          "op": "const",
+          "args": [],
+          "value": "\\`"
+        },
+        {
+          "id": 6,
+          "op": "text.replace",
+          "args": [
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "id": 7,
+          "op": "const",
+          "args": [],
+          "value": "*"
+        },
+        {
+          "id": 8,
+          "op": "const",
+          "args": [],
+          "value": "\\*"
+        },
+        {
+          "id": 9,
+          "op": "text.replace",
+          "args": [
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "id": 10,
+          "op": "const",
+          "args": [],
+          "value": "_"
+        },
+        {
+          "id": 11,
+          "op": "const",
+          "args": [],
+          "value": "\\_"
+        },
+        {
+          "id": 12,
+          "op": "text.replace",
+          "args": [
+            9,
+            10,
+            11
+          ]
+        },
+        {
+          "id": 13,
+          "op": "const",
+          "args": [],
+          "value": "["
+        },
+        {
+          "id": 14,
+          "op": "const",
+          "args": [],
+          "value": "\\["
+        },
+        {
+          "id": 15,
+          "op": "text.replace",
+          "args": [
+            12,
+            13,
+            14
+          ]
+        },
+        {
+          "id": 16,
+          "op": "const",
+          "args": [],
+          "value": "]"
+        },
+        {
+          "id": 17,
+          "op": "const",
+          "args": [],
+          "value": "\\]"
+        },
+        {
+          "id": 18,
+          "op": "text.replace",
+          "args": [
+            15,
+            16,
+            17
+          ]
+        },
+        {
+          "id": 19,
+          "op": "const",
+          "args": [],
+          "value": "<"
+        },
+        {
+          "id": 20,
+          "op": "const",
+          "args": [],
+          "value": "\\<"
+        },
+        {
+          "id": 21,
+          "op": "text.replace",
+          "args": [
+            18,
+            19,
+            20
+          ]
+        },
+        {
+          "id": 22,
+          "op": "const",
+          "args": [],
+          "value": ">"
+        },
+        {
+          "id": 23,
+          "op": "const",
+          "args": [],
+          "value": "\\>"
+        },
+        {
+          "id": 24,
+          "op": "text.replace",
+          "args": [
+            21,
+            22,
+            23
+          ]
+        },
+        {
+          "id": 25,
+          "op": "const",
+          "args": [],
+          "value": "#"
+        },
+        {
+          "id": 26,
+          "op": "const",
+          "args": [],
+          "value": "\\#"
+        },
+        {
+          "id": 27,
+          "op": "text.replace",
+          "args": [
+            24,
+            25,
+            26
+          ]
+        },
+        {
+          "id": 28,
+          "op": "const",
+          "args": [],
+          "value": "!"
+        },
+        {
+          "id": 29,
+          "op": "const",
+          "args": [],
+          "value": "\\!"
+        },
+        {
+          "id": 30,
+          "op": "text.replace",
+          "args": [
+            27,
+            28,
+            29
+          ]
+        },
+        {
+          "id": 31,
+          "op": "const",
+          "args": [],
+          "value": "|"
+        },
+        {
+          "id": 32,
+          "op": "const",
+          "args": [],
+          "value": "\\|"
+        },
+        {
+          "id": 33,
+          "op": "text.replace",
+          "args": [
+            30,
+            31,
+            32
+          ]
+        }
+      ],
+      "return": 33
+    },
+    {
+      "id": 4,
+      "params": [
+        "str"
+      ],
+      "result": "any",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "const",
+          "args": [],
+          "value": "invalid_title"
+        },
+        {
+          "id": 2,
+          "op": "const",
+          "args": [],
+          "value": "Title must contain visible text"
+        },
+        {
+          "id": 3,
+          "op": "fail",
+          "args": [
+            1,
+            2
+          ]
+        }
+      ],
+      "return": 3
+    },
+    {
+      "id": 5,
+      "params": [
+        "str"
+      ],
+      "result": "str",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "const",
+          "args": [],
+          "value": "\r"
+        },
+        {
+          "id": 2,
+          "op": "const",
+          "args": [],
+          "value": " "
+        },
+        {
+          "id": 3,
+          "op": "text.replace",
+          "args": [
+            0,
+            1,
+            2
+          ]
+        },
+        {
+          "id": 4,
+          "op": "const",
+          "args": [],
+          "value": "\n"
+        },
+        {
+          "id": 5,
+          "op": "const",
+          "args": [],
+          "value": " "
+        },
+        {
+          "id": 6,
+          "op": "text.replace",
+          "args": [
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "id": 7,
+          "op": "const",
+          "args": [],
+          "value": "\t"
+        },
+        {
+          "id": 8,
+          "op": "const",
+          "args": [],
+          "value": " "
+        },
+        {
+          "id": 9,
+          "op": "text.replace",
+          "args": [
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "id": 10,
+          "op": "text.trim",
+          "args": [
+            9
+          ]
+        },
+        {
+          "id": 11,
+          "op": "length",
+          "args": [
+            10
+          ]
+        },
+        {
+          "id": 12,
+          "op": "const",
+          "args": [],
+          "value": 0
+        },
+        {
+          "id": 13,
+          "op": "gt",
+          "args": [
+            11,
+            12
+          ]
+        },
+        {
+          "id": 14,
+          "op": "choose",
+          "args": [
+            13,
+            10
+          ],
+          "then": 0,
+          "else": 4
+        }
+      ],
+      "return": 14
+    },
+    {
+      "id": 6,
+      "params": [
+        "str"
+      ],
+      "result": "any",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "const",
+          "args": [],
+          "value": "invalid_category"
+        },
+        {
+          "id": 2,
+          "op": "const",
+          "args": [],
+          "value": "Category must be added, changed or fixed"
+        },
+        {
+          "id": 3,
+          "op": "fail",
+          "args": [
+            1,
+            2
+          ]
+        }
+      ],
+      "return": 3
+    },
+    {
+      "id": 7,
+      "params": [
+        "str"
+      ],
+      "result": "str",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "text.trim",
+          "args": [
+            0
+          ]
+        },
+        {
+          "id": 2,
+          "op": "text.lower",
+          "args": [
+            1
+          ]
+        },
+        {
+          "id": 3,
+          "op": "const",
+          "args": [],
+          "value": [
+            "added",
+            "changed",
+            "fixed"
+          ]
+        },
+        {
+          "id": 4,
+          "op": "contains",
+          "args": [
+            3,
+            2
+          ]
+        },
+        {
+          "id": 5,
+          "op": "choose",
+          "args": [
+            4,
+            2
+          ],
+          "then": 0,
+          "else": 6
+        }
+      ],
+      "return": 5
+    },
+    {
+      "id": 8,
+      "params": [
+        "str"
+      ],
+      "result": "int",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "parse_int",
+          "args": [
+            0
+          ]
+        }
+      ],
+      "return": 1
+    },
+    {
+      "id": 9,
+      "params": [
+        "record"
+      ],
+      "result": "any",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "const",
+          "args": [],
+          "value": "invalid_issue"
+        },
+        {
+          "id": 2,
+          "op": "const",
+          "args": [],
+          "value": "Issue must be empty or a positive decimal integer"
+        },
+        {
+          "id": 3,
+          "op": "fail",
+          "args": [
+            1,
+            2
+          ]
+        }
+      ],
+      "return": 3
+    },
+    {
+      "id": 10,
+      "params": [
+        "int"
+      ],
+      "result": "any",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "const",
+          "args": [],
+          "value": "invalid_issue"
+        },
+        {
+          "id": 2,
+          "op": "const",
+          "args": [],
+          "value": "Issue must be empty or a positive decimal integer"
+        },
+        {
+          "id": 3,
+          "op": "fail",
+          "args": [
+            1,
+            2
+          ]
+        }
+      ],
+      "return": 3
+    },
+    {
+      "id": 11,
+      "params": [
+        "int"
+      ],
+      "result": "str",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "to_text",
+          "args": [
+            0
+          ]
+        }
+      ],
+      "return": 1
+    },
+    {
+      "id": 12,
+      "params": [
+        "record"
+      ],
+      "result": "str",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "const",
+          "args": [],
+          "value": "value"
+        },
+        {
+          "id": 2,
+          "op": "field",
+          "args": [
+            0,
+            1
+          ]
+        },
+        {
+          "id": 3,
+          "op": "const",
+          "args": [],
+          "value": 0
+        },
+        {
+          "id": 4,
+          "op": "gt",
+          "args": [
+            2,
+            3
+          ]
+        },
+        {
+          "id": 5,
+          "op": "choose",
+          "args": [
+            4,
+            2
+          ],
+          "then": 11,
+          "else": 10
+        }
+      ],
+      "return": 5
+    },
+    {
+      "id": 13,
+      "params": [
+        "str"
+      ],
+      "result": "str",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "attempt",
+          "args": [
+            0
+          ],
+          "target": 8
+        },
+        {
+          "id": 2,
+          "op": "const",
+          "args": [],
+          "value": "ok"
+        },
+        {
+          "id": 3,
+          "op": "field",
+          "args": [
+            1,
+            2
+          ]
+        },
+        {
+          "id": 4,
+          "op": "choose",
+          "args": [
+            3,
+            1
+          ],
+          "then": 12,
+          "else": 9
+        }
+      ],
+      "return": 4
+    },
+    {
+      "id": 14,
+      "params": [
+        "str"
+      ],
+      "result": "str",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "text.trim",
+          "args": [
+            0
+          ]
+        },
+        {
+          "id": 2,
+          "op": "const",
+          "args": [],
+          "value": ""
+        },
+        {
+          "id": 3,
+          "op": "eq",
+          "args": [
+            1,
+            2
+          ]
+        },
+        {
+          "id": 4,
+          "op": "choose",
+          "args": [
+            3,
+            1
+          ],
+          "then": 0,
+          "else": 13
+        }
+      ],
+      "return": 4
+    },
+    {
+      "id": 15,
+      "params": [
+        "record"
+      ],
+      "result": "record",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "const",
+          "args": [],
+          "value": "category"
+        },
+        {
+          "id": 2,
+          "op": "field",
+          "args": [
+            0,
+            1
+          ]
+        },
+        {
+          "id": 3,
+          "op": "call",
+          "args": [
+            2
+          ],
+          "target": 7
+        },
+        {
+          "id": 4,
+          "op": "const",
+          "args": [],
+          "value": "title"
+        },
+        {
+          "id": 5,
+          "op": "field",
+          "args": [
+            0,
+            4
+          ]
+        },
+        {
+          "id": 6,
+          "op": "call",
+          "args": [
+            5
+          ],
+          "target": 5
+        },
+        {
+          "id": 7,
+          "op": "const",
+          "args": [],
+          "value": "issue"
+        },
+        {
+          "id": 8,
+          "op": "field",
+          "args": [
+            0,
+            7
+          ]
+        },
+        {
+          "id": 9,
+          "op": "call",
+          "args": [
+            8
+          ],
+          "target": 14
+        },
+        {
+          "id": 10,
+          "op": "record",
+          "args": [
+            3,
+            6,
+            9
+          ],
+          "keys": [
+            "category",
+            "title",
+            "issue"
+          ]
+        }
+      ],
+      "return": 10
+    },
+    {
+      "id": 16,
+      "params": [
+        "record"
+      ],
+      "result": "any",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "const",
+          "args": [],
+          "value": "invalid_columns"
+        },
+        {
+          "id": 2,
+          "op": "const",
+          "args": [],
+          "value": "CSV headers must be exactly category,title,issue"
+        },
+        {
+          "id": 3,
+          "op": "fail",
+          "args": [
+            1,
+            2
+          ]
+        }
+      ],
+      "return": 3
+    },
+    {
+      "id": 17,
+      "params": [
+        "record"
+      ],
+      "result": "record",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "keys",
+          "args": [
+            0
+          ]
+        },
+        {
+          "id": 2,
+          "op": "const",
+          "args": [],
+          "value": [
+            "category",
+            "issue",
+            "title"
+          ]
+        },
+        {
+          "id": 3,
+          "op": "eq",
+          "args": [
+            1,
+            2
+          ]
+        },
+        {
+          "id": 4,
+          "op": "choose",
+          "args": [
+            3,
+            0
+          ],
+          "then": 15,
+          "else": 16
+        }
+      ],
+      "return": 4
+    },
+    {
+      "id": 18,
+      "params": [
+        "record"
+      ],
+      "result": "str",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "const",
+          "args": [],
+          "value": "- "
+        },
+        {
+          "id": 2,
+          "op": "const",
+          "args": [],
+          "value": "title"
+        },
+        {
+          "id": 3,
+          "op": "field",
+          "args": [
+            0,
+            2
+          ]
+        },
+        {
+          "id": 4,
+          "op": "call",
+          "args": [
+            3
+          ],
+          "target": 3
+        },
+        {
+          "id": 5,
+          "op": "const",
+          "args": [],
+          "value": ""
+        },
+        {
+          "id": 6,
+          "op": "list",
+          "args": [
+            1,
+            4
+          ]
+        },
+        {
+          "id": 7,
+          "op": "text.join",
+          "args": [
+            5,
+            6
+          ]
+        }
+      ],
+      "return": 7
+    },
+    {
+      "id": 19,
+      "params": [
+        "record"
+      ],
+      "result": "str",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "call",
+          "args": [
+            0
+          ],
+          "target": 18
+        },
+        {
+          "id": 2,
+          "op": "const",
+          "args": [],
+          "value": " (#"
+        },
+        {
+          "id": 3,
+          "op": "const",
+          "args": [],
+          "value": "issue"
+        },
+        {
+          "id": 4,
+          "op": "field",
+          "args": [
+            0,
+            3
+          ]
+        },
+        {
+          "id": 5,
+          "op": "const",
+          "args": [],
+          "value": ")"
+        },
+        {
+          "id": 6,
+          "op": "const",
+          "args": [],
+          "value": ""
+        },
+        {
+          "id": 7,
+          "op": "list",
+          "args": [
+            1,
+            2,
+            4,
+            5
+          ]
+        },
+        {
+          "id": 8,
+          "op": "text.join",
+          "args": [
+            6,
+            7
+          ]
+        }
+      ],
+      "return": 8
+    },
+    {
+      "id": 20,
+      "params": [
+        "record"
+      ],
+      "result": "str",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "const",
+          "args": [],
+          "value": "issue"
+        },
+        {
+          "id": 2,
+          "op": "field",
+          "args": [
+            0,
+            1
+          ]
+        },
+        {
+          "id": 3,
+          "op": "const",
+          "args": [],
+          "value": ""
+        },
+        {
+          "id": 4,
+          "op": "eq",
+          "args": [
+            2,
+            3
+          ]
+        },
+        {
+          "id": 5,
+          "op": "choose",
+          "args": [
+            4,
+            0
+          ],
+          "then": 18,
+          "else": 19
+        }
+      ],
+      "return": 5
+    },
+    {
+      "id": 21,
+      "params": [
+        "list"
+      ],
+      "result": "str",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "const",
+          "args": [],
+          "value": "- None."
+        }
+      ],
+      "return": 1
+    },
+    {
+      "id": 22,
+      "params": [
+        "list"
+      ],
+      "result": "str",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "const",
+          "args": [],
+          "value": "\n"
+        },
+        {
+          "id": 2,
+          "op": "map",
+          "args": [
+            0
+          ],
+          "target": 20
+        },
+        {
+          "id": 3,
+          "op": "text.join",
+          "args": [
+            1,
+            2
+          ]
+        }
+      ],
+      "return": 3
+    },
+    {
+      "id": 23,
+      "params": [
+        "list",
+        "str"
+      ],
+      "result": "str",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "param",
+          "args": [],
+          "index": 1
+        },
+        {
+          "id": 2,
+          "op": "length",
+          "args": [
+            0
+          ]
+        },
+        {
+          "id": 3,
+          "op": "const",
+          "args": [],
+          "value": 0
+        },
+        {
+          "id": 4,
+          "op": "eq",
+          "args": [
+            2,
+            3
+          ]
+        },
+        {
+          "id": 5,
+          "op": "choose",
+          "args": [
+            4,
+            0
+          ],
+          "then": 21,
+          "else": 22
+        },
+        {
+          "id": 6,
+          "op": "const",
+          "args": [],
+          "value": "## "
+        },
+        {
+          "id": 7,
+          "op": "const",
+          "args": [],
+          "value": "\n"
+        },
+        {
+          "id": 8,
+          "op": "const",
+          "args": [],
+          "value": "\n\n"
+        },
+        {
+          "id": 9,
+          "op": "const",
+          "args": [],
+          "value": ""
+        },
+        {
+          "id": 10,
+          "op": "list",
+          "args": [
+            6,
+            1,
+            7,
+            5,
+            8
+          ]
+        },
+        {
+          "id": 11,
+          "op": "text.join",
+          "args": [
+            9,
+            10
+          ]
+        }
+      ],
+      "return": 11
+    },
+    {
+      "id": 24,
+      "params": [
+        "record"
+      ],
+      "result": "bool",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "const",
+          "args": [],
+          "value": "category"
+        },
+        {
+          "id": 2,
+          "op": "field",
+          "args": [
+            0,
+            1
+          ]
+        },
+        {
+          "id": 3,
+          "op": "const",
+          "args": [],
+          "value": "added"
+        },
+        {
+          "id": 4,
+          "op": "eq",
+          "args": [
+            2,
+            3
+          ]
+        }
+      ],
+      "return": 4
+    },
+    {
+      "id": 25,
+      "params": [
+        "record"
+      ],
+      "result": "bool",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "const",
+          "args": [],
+          "value": "category"
+        },
+        {
+          "id": 2,
+          "op": "field",
+          "args": [
+            0,
+            1
+          ]
+        },
+        {
+          "id": 3,
+          "op": "const",
+          "args": [],
+          "value": "changed"
+        },
+        {
+          "id": 4,
+          "op": "eq",
+          "args": [
+            2,
+            3
+          ]
+        }
+      ],
+      "return": 4
+    },
+    {
+      "id": 26,
+      "params": [
+        "record"
+      ],
+      "result": "bool",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "const",
+          "args": [],
+          "value": "category"
+        },
+        {
+          "id": 2,
+          "op": "field",
+          "args": [
+            0,
+            1
+          ]
+        },
+        {
+          "id": 3,
+          "op": "const",
+          "args": [],
+          "value": "fixed"
+        },
+        {
+          "id": 4,
+          "op": "eq",
+          "args": [
+            2,
+            3
+          ]
+        }
+      ],
+      "return": 4
+    },
+    {
+      "id": 27,
+      "params": [
+        "list",
+        "str"
+      ],
+      "result": "str",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "param",
+          "args": [],
+          "index": 1
+        },
+        {
+          "id": 2,
+          "op": "filter",
+          "args": [
+            0
+          ],
+          "target": 24
+        },
+        {
+          "id": 3,
+          "op": "const",
+          "args": [],
+          "value": "Added"
+        },
+        {
+          "id": 4,
+          "op": "call",
+          "args": [
+            2,
+            3
+          ],
+          "target": 23
+        },
+        {
+          "id": 5,
+          "op": "filter",
+          "args": [
+            0
+          ],
+          "target": 25
+        },
+        {
+          "id": 6,
+          "op": "const",
+          "args": [],
+          "value": "Changed"
+        },
+        {
+          "id": 7,
+          "op": "call",
+          "args": [
+            5,
+            6
+          ],
+          "target": 23
+        },
+        {
+          "id": 8,
+          "op": "filter",
+          "args": [
+            0
+          ],
+          "target": 26
+        },
+        {
+          "id": 9,
+          "op": "const",
+          "args": [],
+          "value": "Fixed"
+        },
+        {
+          "id": 10,
+          "op": "call",
+          "args": [
+            8,
+            9
+          ],
+          "target": 23
+        },
+        {
+          "id": 11,
+          "op": "const",
+          "args": [],
+          "value": "# Release "
+        },
+        {
+          "id": 12,
+          "op": "call",
+          "args": [
+            1
+          ],
+          "target": 3
+        },
+        {
+          "id": 13,
+          "op": "const",
+          "args": [],
+          "value": "\n\n"
+        },
+        {
+          "id": 14,
+          "op": "const",
+          "args": [],
+          "value": ""
+        },
+        {
+          "id": 15,
+          "op": "list",
+          "args": [
+            11,
+            12,
+            13,
+            4,
+            7,
+            10
+          ]
+        },
+        {
+          "id": 16,
+          "op": "text.join",
+          "args": [
+            14,
+            15
+          ]
+        }
+      ],
+      "return": 16
+    },
+    {
+      "id": 28,
+      "params": [
+        "list"
+      ],
+      "result": "any",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "const",
+          "args": [],
+          "value": "empty_csv"
+        },
+        {
+          "id": 2,
+          "op": "const",
+          "args": [],
+          "value": "CSV must contain at least one change"
+        },
+        {
+          "id": 3,
+          "op": "fail",
+          "args": [
+            1,
+            2
+          ]
+        }
+      ],
+      "return": 3
+    },
+    {
+      "id": 29,
+      "params": [
+        "list"
+      ],
+      "result": "list",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        }
+      ],
+      "return": 0
+    },
+    {
+      "id": 30,
+      "params": [
+        "list"
+      ],
+      "result": "list",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "length",
+          "args": [
+            0
+          ]
+        },
+        {
+          "id": 2,
+          "op": "const",
+          "args": [],
+          "value": 0
+        },
+        {
+          "id": 3,
+          "op": "gt",
+          "args": [
+            1,
+            2
+          ]
+        },
+        {
+          "id": 4,
+          "op": "choose",
+          "args": [
+            3,
+            0
+          ],
+          "then": 29,
+          "else": 28
+        }
+      ],
+      "return": 4
+    },
+    {
+      "id": 31,
+      "params": [
+        "str",
+        "str",
+        "str"
+      ],
+      "result": "str",
+      "nodes": [
+        {
+          "id": 0,
+          "op": "param",
+          "args": [],
+          "index": 0
+        },
+        {
+          "id": 1,
+          "op": "param",
+          "args": [],
+          "index": 1
+        },
+        {
+          "id": 2,
+          "op": "param",
+          "args": [],
+          "index": 2
+        },
+        {
+          "id": 3,
+          "op": "host",
+          "args": [
+            0
+          ],
+          "binding": "read_csv"
+        },
+        {
+          "id": 4,
+          "op": "call",
+          "args": [
+            3
+          ],
+          "target": 30
+        },
+        {
+          "id": 5,
+          "op": "map",
+          "args": [
+            4
+          ],
+          "target": 17
+        },
+        {
+          "id": 6,
+          "op": "call",
+          "args": [
+            2
+          ],
+          "target": 2
+        },
+        {
+          "id": 7,
+          "op": "call",
+          "args": [
+            5,
+            6
+          ],
+          "target": 27
+        },
+        {
+          "id": 8,
+          "op": "host",
+          "args": [
+            1,
+            7
+          ],
+          "binding": "write_text"
+        },
+        {
+          "id": 9,
+          "op": "call",
+          "args": [
+            7
+          ],
+          "target": 0,
+          "after": [
+            8
+          ]
+        }
+      ],
+      "return": 9
+    }
+  ],
+  "exports": {
+    "generate": 31
+  }
+}

@@ -1,0 +1,167 @@
+{
+  "files": {},
+  "cases": [
+    {
+      "export": "init",
+      "args": [],
+      "expect": {
+        "ready": true,
+        "version": 1
+      }
+    },
+    {
+      "export": "startup",
+      "args": [],
+      "expect": {
+        "ready": true,
+        "version": 1
+      }
+    },
+    {
+      "export": "create_item",
+      "args": [
+        "O'Reilly caf\u00e9",
+        5
+      ],
+      "expect": {
+        "id": 1,
+        "name": "O'Reilly caf\u00e9",
+        "stock": 5
+      }
+    },
+    {
+      "export": "create_item",
+      "args": [
+        "  ",
+        5
+      ],
+      "error": "invalid_name"
+    },
+    {
+      "export": "create_item",
+      "args": [
+        "bad",
+        -1
+      ],
+      "error": "invalid_stock"
+    },
+    {
+      "export": "reserve",
+      "args": [
+        1,
+        2,
+        "customer's order"
+      ],
+      "expect": {
+        "id": 1,
+        "item_id": 1,
+        "quantity": 2,
+        "note": "customer's order"
+      }
+    },
+    {
+      "export": "fail_reservation",
+      "args": [
+        1,
+        1,
+        "rollback"
+      ],
+      "error": "deliberate_failure"
+    },
+    {
+      "export": "get_item",
+      "args": [
+        1
+      ],
+      "expect": {
+        "id": 1,
+        "name": "O'Reilly caf\u00e9",
+        "stock": 3
+      }
+    },
+    {
+      "export": "reserve",
+      "args": [
+        1,
+        4,
+        "no"
+      ],
+      "error": "insufficient_stock"
+    },
+    {
+      "export": "reserve",
+      "args": [
+        1,
+        0,
+        "no"
+      ],
+      "error": "invalid_quantity"
+    },
+    {
+      "export": "list_reservations",
+      "args": [],
+      "expect": [
+        {
+          "id": 1,
+          "item_id": 1,
+          "quantity": 2,
+          "note": "customer's order"
+        }
+      ]
+    },
+    {
+      "export": "get_item",
+      "args": [
+        99
+      ],
+      "error": "not_found"
+    },
+    {
+      "export": "create_item",
+      "args": [
+        "temporary",
+        0
+      ],
+      "expect": {
+        "id": 2,
+        "name": "temporary",
+        "stock": 0
+      }
+    },
+    {
+      "export": "update_item",
+      "args": [
+        2,
+        "updated",
+        4
+      ],
+      "expect": {
+        "id": 2,
+        "name": "updated",
+        "stock": 4
+      }
+    },
+    {
+      "export": "delete_item",
+      "args": [
+        2
+      ],
+      "expect": {
+        "id": 2,
+        "name": "updated",
+        "stock": 4
+      }
+    },
+    {
+      "export": "list_items",
+      "args": [],
+      "expect": [
+        {
+          "id": 1,
+          "name": "O'Reilly caf\u00e9",
+          "stock": 3
+        }
+      ]
+    }
+  ]
+}

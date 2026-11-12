@@ -1,0 +1,16 @@
+{
+  "format": "mairg-project-1",
+  "name": "changelog",
+  "program": "program.json",
+  "bindings": {
+    "read_csv": "file.read_csv",
+    "write_text": "file.write_text"
+  },
+  "database": null,
+  "assets": [],
+  "routes": [],
+  "startup": null,
+  "tests": [
+    "tests.json"
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "files": {
+    "changes.csv": "category,title,issue\n Fixed ,\"Fix café, quoting\",0012\nADDED,\"Ship 日本語 support\",42\nchanged,\"Keep \"\"quoted\"\" words\",\nfixed,\"Fix café, quoting\",12\n",
+    "bad-category.csv": "category,title,issue\nadded,Good,1\nunknown,Bad,2\n",
+    "bad-title.csv": "category,title,issue\nfixed,   ,1\n",
+    "bad-issue.csv": "category,title,issue\nfixed,Bad,abc\n"
+  },
+  "cases": [
+    {
+      "export": "generate",
+      "args": [
+        "changes.csv",
+        "release.md",
+        " 1.2.0 "
+      ],
+      "expect": "# Release 1.2.0\n\n## Added\n- Ship 日本語 support (#42)\n\n## Changed\n- Keep \"quoted\" words\n\n## Fixed\n- Fix café, quoting (#12)\n- Fix café, quoting (#12)\n\n"
+    },
+    {
+      "export": "generate",
+      "args": [
+        "bad-category.csv",
+        "release.md",
+        "1.2.0"
+      ],
+      "error": "invalid_category"
+    },
+    {
+      "export": "generate",
+      "args": [
+        "bad-title.csv",
+        "release.md",
+        "1.2.0"
+      ],
+      "error": "invalid_title"
+    },
+    {
+      "export": "generate",
+      "args": [
+        "bad-issue.csv",
+        "release.md",
+        "1.2.0"
+      ],
+      "error": "invalid_issue"
+    }
+  ]
+}

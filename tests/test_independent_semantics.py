@@ -1,326 +1,412 @@
-"""Independent semantic tests against the approved MAIRG-M2 contract.
+"""Independent contract tests: public source graphs and actual resource outcomes.
 
-The oracle consumes unordered source documents and does not use the production
-interpreter, optimizer, fold helpers, or emitted expressions for evaluation.
+These helpers deliberately do not import builder-test fixtures or implement an
+alternate language runtime. Random cases use an integer expression oracle.
 """
+from __future__ import annotations
 
+import ast
 import copy
-import operator
 import random
-import shutil
+import sqlite3
+import tempfile
 import unittest
-from unittest.mock import Mock
+from contextlib import closing
+from pathlib import Path
+from typing import Any
 
-from mairg.interpreter import interpret, records_to_columns, validate_columns
-from mairg.ir import (
-    LEAF_OPS,
-    MAX_DEPTH,
-    OPS,
-    REDUCTIONS,
-    MairgError,
-    Node,
-    Output,
-    Program,
-    checked_program,
-    source_revision,
-    to_document,
-    validate,
-)
-from mairg.native import compile_program, emit_c, prepare_batch
-from mairg.optimizer import optimize
-from mairg.patch import apply_patch
-
-MASK = (1 << 64) - 1
-HAS_COMPILER = bool(shutil.which("clang") or shutil.which("gcc"))
-U_OPS = ("add", "sub", "mul", "bit_and", "bit_or", "bit_xor")
-COMPARE = ("eq", "lt", "le", "gt", "ge")
-PURE_FUNCTIONS = {
-    "add": operator.add,
-    "sub": operator.sub,
-    "mul": operator.mul,
-    "bit_and": operator.and_,
-    "bit_or": operator.or_,
-    "bit_xor": operator.xor,
-    "eq": operator.eq,
-    "lt": operator.lt,
-    "le": operator.le,
-    "gt": operator.gt,
-    "ge": operator.ge,
-    "and": lambda a, b: bool(a and b),
-    "or": lambda a, b: bool(a or b),
-    "not": operator.not_,
-    "select": lambda condition, yes, no: yes if condition else no,
-}
+from mairg.compiler import compile_documents
+from mairg.language import OPS, AppError, decode_json
 
 
-def oracle(document, columns):
-    """Evaluate dependency meaning directly, with a memoized unordered graph."""
-    definitions = {row[0]: row[1:] for row in document["nodes"]}
-    result = {row[0]: 0 for row in document["outputs"]}
-    names = [pair[0] for pair in document["inputs"]]
-    for index in range(len(columns[names[0]])):
-        values = {}
-
-        def value(ident):
-            if ident not in values:
-                op, *args = definitions[ident]
-                if op == "input":
-                    computed = columns[names[args[0]]][index]
-                elif op in ("u64", "bool"):
-                    computed = args[0]
-                else:
-                    computed = PURE_FUNCTIONS[op](*(value(arg) for arg in args))
-                    if op in U_OPS:
-                        computed &= MASK
-                values[ident] = computed
-            return values[ident]
-
-        for row in document["outputs"]:
-            name, reduction, *args = row
-            if not value(args[-1]):
-                continue
-            if reduction == "count":
-                result[name] = (result[name] + 1) & MASK
-            elif reduction == "sum":
-                result[name] = (result[name] + value(args[0])) & MASK
-            elif reduction == "max":
-                result[name] = max(result[name], value(args[0]))
-            elif reduction == "xor":
-                result[name] ^= value(args[0])
-            else:
-                raise AssertionError(reduction)
-    return result
+def literal(identity: int, value: Any) -> dict[str, Any]:
+    return {'id': identity, 'op': 'const', 'args': [], 'value': value}
 
 
-def whole_catalog_document():
-    nodes = [[0, "input", 0], [1, "input", 1], [2, "input", 2],
-             [3, "input", 3], [4, "u64", MASK], [5, "u64", 1],
-             [6, "bool", True], [7, "bool", False]]
-    outputs = []
-    for op in U_OPS:
-        ident = len(nodes)
-        nodes.append([ident, op, 0, 1])
-        outputs.extend([[op + "_sum", "sum", ident, 6],
-                        [op + "_max", "max", ident, 2],
-                        [op + "_xor", "xor", ident, 3]])
-    for op in COMPARE:
-        ident = len(nodes)
-        nodes.append([ident, op, 0, 1])
-        outputs.append([op, "count", ident])
-    for op, args in (("and", [2, 3]), ("or", [2, 3]), ("not", [2]),
-                     ("eq", [2, 3]), ("select", [2, 3, 7])):
-        ident = len(nodes)
-        nodes.append([ident, op, *args])
-        outputs.append([op + "_bool_" + str(ident), "count", ident])
-    ident = len(nodes)
-    nodes.extend([[ident, "select", 2, 0, 1],
-                  [ident + 1, "add", 4, 5],
-                  [ident + 2, "sub", 5, 4],
-                  [ident + 3, "mul", 4, 4]])
-    outputs.extend([["selected", "sum", ident, 6],
-                    ["literal_add_wrap", "sum", ident + 1, 6],
-                    ["literal_sub_wrap", "sum", ident + 2, 6],
-                    ["literal_mul_wrap", "sum", ident + 3, 6],
-                    ["never", "sum", 0, 7], ["always", "count", 6]])
-    return {"format": "mairg-1",
-            "inputs": [["x", "u64"], ["y", "u64"], ["a", "bool"], ["b", "bool"]],
-            "nodes": nodes, "outputs": outputs}
+def node(identity: int, operation: str, *arguments: int, **extra: Any) -> dict[str, Any]:
+    return {'id': identity, 'op': operation, 'args': list(arguments), **extra}
 
 
-def random_document(rng, length=45):
-    nodes = [[0, "input", 0], [1, "input", 1], [2, "input", 2],
-             [3, "u64", rng.choice((0, 1, MASK, 1 << 63, rng.getrandbits(64)))],
-             [4, "bool", bool(rng.getrandbits(1))]]
-    unsigned, boolean = [0, 1, 3], [2, 4]
-    for ident in range(5, length):
-        scalar_type = rng.choice(("u64", "bool"))
-        op = rng.choice((*U_OPS, "select")) if scalar_type == "u64" else rng.choice(
-            (*COMPARE, "and", "or", "not", "select"))
-        if op in U_OPS or op in ("lt", "le", "gt", "ge"):
-            args = rng.choices(unsigned, k=2)
-        elif op == "eq":
-            args = rng.choices(rng.choice((unsigned, boolean)), k=2)
-        elif op in ("and", "or"):
-            args = rng.choices(boolean, k=2)
-        elif op == "not":
-            args = [rng.choice(boolean)]
-        else:
-            args = [rng.choice(boolean), *rng.choices(unsigned if scalar_type == "u64" else boolean, k=2)]
-        nodes.append([ident, op, *args])
-        (unsigned if scalar_type == "u64" else boolean).append(ident)
-    outputs = [["count", "count", rng.choice(boolean)]]
-    outputs.extend([[op, op, rng.choice(unsigned), rng.choice(boolean)] for op in ("sum", "max", "xor")])
-    rng.shuffle(nodes)
-    return {"format": "mairg-1", "inputs": [["x", "u64"], ["y", "u64"], ["flag", "bool"]],
-            "nodes": nodes, "outputs": outputs}
+def function(identity: int, nodes: list[dict[str, Any]], *, params: list[str] | None = None,
+             result: str = 'any', returns: int | None = None) -> dict[str, Any]:
+    return {'id': identity, 'params': [] if params is None else params, 'result': result,
+            'nodes': nodes, 'return': nodes[-1]['id'] if returns is None else returns}
 
 
-def renamed(document, rng):
-    result = copy.deepcopy(document)
-    mapping = dict(zip([row[0] for row in result["nodes"]], rng.sample(range(1, 1 << 30), len(result["nodes"]))))
-    for row in result["nodes"]:
-        row[0] = mapping[row[0]]
-        if row[1] not in LEAF_OPS:
-            row[2:] = [mapping[arg] for arg in row[2:]]
-    for row in result["outputs"]:
-        row[2:] = [mapping[arg] for arg in row[2:]]
-    rng.shuffle(result["nodes"])
-    return result
+def compile_graph(functions: list[dict[str, Any]], *, bindings: dict[str, str] | None = None,
+                  assets: dict[str, str] | None = None, database: str | None = None,
+                  exports: dict[str, int] | None = None) -> Any:
+    snapshots = {} if assets is None else assets
+    manifest = {'format': 'mairg-project-1', 'name': 'independent-semantics',
+                'program': 'application.json', 'bindings': bindings or {},
+                'database': database, 'assets': list(snapshots), 'routes': [],
+                'startup': None, 'tests': []}
+    document = {'format': 'mairg-app-1', 'functions': functions,
+                'exports': exports or {'main': functions[0]['id']}}
+    return compile_documents(manifest, document, root='/tmp', assets=snapshots)
 
 
-def random_columns(document, rng, count):
-    columns = {}
-    for name, scalar_type in document["inputs"]:
-        if scalar_type == "bool":
-            columns[name] = [bool(rng.getrandbits(1)) for _ in range(count)]
-        else:
-            edges = [0, MASK, 1, 1 << 63, (1 << 63) - 1]
-            columns[name] = (edges + [rng.getrandbits(64) for _ in range(count)])[:count]
-            rng.shuffle(columns[name])
-    return columns
+def primitive(operation: str, operands: list[Any], **extra: Any) -> Any:
+    return compile_graph([function(0, [literal(i, v) for i, v in enumerate(operands)] +
+                           [node(len(operands), operation, *range(len(operands)), **extra)])])
+
+
+def rename_program(functions: list[dict[str, Any]], seed: int) -> list[dict[str, Any]]:
+    """Bijections and shuffles preserve graph edges, never business values."""
+    rng = random.Random(seed)
+    changed = copy.deepcopy(functions)
+    fids = dict(zip([f['id'] for f in changed], rng.sample(range(100, 100_000), len(changed))))
+    for f in changed:
+        nids = dict(zip([n['id'] for n in f['nodes']], rng.sample(range(100, 100_000), len(f['nodes']))))
+        f['id'] = fids[f['id']]
+        f['return'] = nids[f['return']]
+        for n in f['nodes']:
+            n['id'] = nids[n['id']]
+            n['args'] = [nids[a] for a in n['args']]
+            if 'after' in n:
+                n['after'] = [nids[a] for a in n['after']]
+            for field in ('target', 'then', 'else'):
+                if field in n:
+                    n[field] = fids[n[field]]
+        rng.shuffle(f['nodes'])
+    rng.shuffle(changed)
+    return changed
 
 
 class IndependentSemanticsTests(unittest.TestCase):
-    def test_catalog_coverage_and_independent_oracle(self):
-        document = whole_catalog_document()
-        self.assertEqual({row[1] for row in document["nodes"]}, set(OPS))
-        self.assertEqual({row[1] for row in document["outputs"]}, set(REDUCTIONS))
-        rng = random.Random(7919)
-        rng.shuffle(document["nodes"])
-        program = validate(document)
-        for count in (0, 1, 64):
-            columns = random_columns(document, rng, count)
-            expected = oracle(document, columns)
-            self.assertEqual(interpret(program, columns), expected)
-            self.assertEqual(interpret(optimize(program).program, columns), expected)
-        if HAS_COMPILER:
-            for enabled in (False, True):
-                with compile_program(program, enabled) as compiled:
-                    for count in (0, 1, 64):
-                        columns = random_columns(document, rng, count)
-                        self.assertEqual(compiled.run(columns), oracle(document, columns))
+    def assert_error(self, code: str, action: Any) -> AppError:
+        with self.assertRaises(AppError) as caught:
+            action()
+        self.assertEqual(caught.exception.code, code)
+        return caught.exception
 
-    def test_randomized_native_original_and_optimized_match_independent_oracle(self):
-        rng = random.Random(104729)
-        for case in range(32):
-            document = random_document(rng)
-            program = validate(document)
-            columns = random_columns(document, rng, rng.choice((0, 1, 7, 31)))
-            expected = oracle(document, columns)
-            with self.subTest(case=case):
-                self.assertEqual(interpret(program, columns), expected)
-                self.assertEqual(interpret(optimize(program).program, columns), expected)
-                if HAS_COMPILER:
-                    for enabled in (False, True):
-                        with compile_program(program, enabled) as compiled:
-                            self.assertEqual(compiled.run(columns), expected)
-
-    def test_five_hundred_unordered_graphs_and_opaque_id_renamings(self):
-        rng = random.Random(15485863)
-        for case in range(500):
-            document = random_document(rng)
-            program = validate(document)
-            alternate = renamed(document, rng)
-            for row in alternate["nodes"]:
-                if row[1] in OPS and OPS[row[1]].commutative and rng.getrandbits(1):
-                    row[2:] = reversed(row[2:])
-            plan, alternate_plan = optimize(program), optimize(validate(alternate))
-            with self.subTest(case=case):
-                self.assertEqual(plan.fingerprint, alternate_plan.fingerprint)
-                self.assertEqual(to_document(plan.program), to_document(alternate_plan.program))
-                reordered = copy.deepcopy(document)
-                rng.shuffle(reordered["nodes"])
-                self.assertEqual(source_revision(program), source_revision(validate(reordered)))
-
-    def test_patch_source_identity_atomicity_and_replay(self):
-        source = validate(whole_catalog_document())
-        before = to_document(source)
-        base = source_revision(source)
-        changed = apply_patch(source, {"base": base, "set_nodes": [[99999, "u64", 17]]})
-        self.assertNotEqual(source_revision(changed), base)
-        self.assertEqual(optimize(source).fingerprint, optimize(changed).fingerprint)
-        for patch in ({"base": base},
-                      {"base": source_revision(changed), "remove_nodes": [0]},
-                      {"base": source_revision(changed), "set_nodes": [[6, "u64", 1]]},
-                      {"base": source_revision(changed), "remove_nodes": [99999], "set_nodes": [[99999, "u64", 9]]}):
-            snapshot = to_document(changed)
-            with self.subTest(patch=patch), self.assertRaises(MairgError):
-                apply_patch(changed, patch)
-            self.assertEqual(to_document(changed), snapshot)
-        restored = apply_patch(changed, {"base": source_revision(changed), "remove_nodes": [99999]})
-        self.assertEqual(source_revision(restored), base)
-        self.assertEqual(to_document(source), before)
-
-    def test_public_consumers_reject_forged_types_literals_and_dropped_metadata(self):
-        valid = validate(whole_catalog_document())
-        malformed = [
-            Program(valid.inputs, (Node(0, "input", (0,), "bool"), *valid.nodes[1:]), valid.outputs),
-            Program(valid.inputs, (*valid.nodes, Node(999, "u64", (-1,), "u64")), valid.outputs),
-            Program(valid.inputs, (*valid.nodes, Node(999, "bool", (1,), "bool")), valid.outputs),
-            Program(valid.inputs, valid.nodes, (Output("forged", "count", 999, 6),)),
-            Program(valid.inputs, valid.nodes, (Output("forged", "sum", 0, True),)),
+    def test_all_primitive_dispatch_and_exact_types(self) -> None:
+        cases = [
+            ('record', [1, ['λ']], {'a': 1, 'b': ['λ']}, {'keys': ['a', 'b']}),
+            ('list', [None, True, 1, 1.0, 'λ'], [None, True, 1, 1.0, 'λ'], {}),
+            ('field', [{'zero': None}, 'zero'], None, {}),
+            ('index', ['🦉λ', 1], 'λ', {}),
+            ('set_field', [{'a': []}, 'b', {'x': 1}], {'a': [], 'b': {'x': 1}}, {}),
+            ('length', ['🦉λ'], 2, {}),
+            ('concat', [[1, True], [1.0]], [1, True, 1.0], {}),
+            ('keys', [{'λ': 0, 'A': 1, 'a': 2}], ['A', 'a', 'λ'], {}),
+            ('contains', [[{'x': [True]}], {'x': [1]}], False, {}),
+            ('eq', [{'a': [1, False]}, {'a': [1.0, False]}], False, {}),
+            ('lt', ['Z', 'a'], True, {}), ('le', [-2, -2], True, {}),
+            ('gt', [1.0, -0.0], True, {}), ('ge', [-4, 0], False, {}),
+            ('add', [2**400, 2**400], 2**401, {}), ('sub', [-7, 2], -9, {}),
+            ('mul', [-7, 2], -14, {}), ('div', [3, 2.0], 1.5, {}),
+            ('mod', [-5, 3], 1, {}), ('neg', [-0.0], 0.0, {}),
+            ('and', [True, False], False, {}), ('or', [False, True], True, {}),
+            ('not', [True], False, {}), ('text.trim', ['\u2003λ\n'], 'λ', {}),
+            ('text.lower', ['ΟΣ'], 'ος', {}), ('text.upper', ['straße'], 'STRASSE', {}),
+            ('text.split', ['a||b|', '|'], ['a', '', 'b', ''], {}),
+            ('text.join', ['🦉', ['a', '', 'b']], 'a🦉🦉b', {}),
+            ('text.replace', ['aaaa', 'aa', 'λ'], 'λλ', {}),
+            ('json.parse', ['{"z":[null,true,1,1.0]}'], {'z': [None, True, 1, 1.0]}, {}),
+            ('json.stringify', [{'z': [], 'a': 'λ'}], '{"a":"\\u03bb","z":[]}', {}),
+            ('parse_int', ['-000012'], -12, {}),
+            ('to_text', [[True, None, 1.0]], '[true,null,1.0]', {}),
         ]
-        consumers = [checked_program, source_revision, optimize, emit_c,
-                     lambda p: apply_patch(p, {"base": "incorrect"}),
-                     lambda p: interpret(p, {}), lambda p: validate_columns(p, {}),
-                     lambda p: records_to_columns(p, []), lambda p: prepare_batch(p, {})]
-        if HAS_COMPILER:
-            consumers.append(compile_program)
-        for program in malformed:
-            for consume in consumers:
-                with self.subTest(consumer=consume, program=program), self.assertRaises(MairgError):
-                    consume(program)
+        covered = {op for op, *_ in cases}
+        # Every other catalog entry has a dedicated control/resource test below.
+        self.assertEqual(set(OPS) - covered, {'const', 'param', 'asset.text', 'call', 'choose',
+                         'map', 'filter', 'fold', 'attempt', 'fail', 'host', 'transaction'})
+        for op, operands, expected, extra in cases:
+            with self.subTest(op=op):
+                actual = primitive(op, operands, **extra).call('main', [])
+                self.assertEqual(actual, expected)
+                self.assertIs(type(actual), type(expected))
 
-    @unittest.skipUnless(HAS_COMPILER, "native compiler required")
-    def test_late_bad_values_reject_before_kernel_and_prepared_data_is_pinned(self):
-        document = whole_catalog_document()
-        program = validate(document)
-        rng = random.Random(32452843)
-        columns = random_columns(document, rng, 9)
-        with compile_program(program) as compiled:
-            prepared = compiled.prepare(columns)
-            expected = oracle(document, columns)
-            columns["x"][-1] = (columns["x"][-1] + 1234) & MASK
-            self.assertEqual(compiled.run_prepared(prepared), expected)
-            real_kernel = compiled.kernel
-            compiled.kernel = Mock()
-            bad = []
-            for invalid in (True, -1, 1 << 64, 0.0, "1", None):
-                item = copy.deepcopy(columns)
-                item["x"][-1] = invalid
-                bad.append(item)
-            for invalid in (1, 0, None, "true"):
-                item = copy.deepcopy(columns)
-                item["a"][-1] = invalid
-                bad.append(item)
-            bad.extend([{key: value for key, value in columns.items() if key != "x"},
-                        {**columns, "extra": []}, {**columns, "x": columns["x"][:-1]}])
-            for item in bad:
-                with self.subTest(columns=item), self.assertRaises(MairgError):
-                    compiled.run(item)
-            compiled.kernel.assert_not_called()
-            compiled.kernel = real_kernel
+    def test_operand_types_never_coerce_and_errors_are_local(self) -> None:
+        wrong = [('add', [True, 1]), ('sub', [1, 1.0]), ('mul', [2.0, 2]),
+                 ('lt', [0, 0.0]), ('div', [True, 2]), ('mod', [1.0, 2]),
+                 ('neg', [False]), ('not', [1]), ('and', [True, 0]), ('or', [False, 1]),
+                 ('index', [[1], True]), ('contains', ['1', 1]),
+                 ('concat', ['a', []]), ('text.join', [',', ['a', 1]]),
+                 ('field', [[1], 'x']), ('set_field', [{}, 1, 0]),
+                 ('length', [1]), ('keys', [[]]), ('parse_int', [3]),
+                 ('json.parse', [None]), ('text.trim', [False])]
+        for op, values in wrong:
+            with self.subTest(op=op, values=values):
+                error = self.assert_error('type_error', lambda: primitive(op, values).call('main', []))
+                self.assertEqual(error.function, 0)
+                self.assertEqual(error.node, len(values))
+        for op, values, code in [('field', [{}, 'x'], 'missing_field'),
+                                 ('index', [[1], -1], 'index_error'),
+                                 ('div', [1, 0], 'arithmetic_error'),
+                                 ('mod', [1, 0], 'arithmetic_error'),
+                                 ('text.split', ['x', ''], 'value_error'),
+                                 ('text.replace', ['x', '', 'z'], 'value_error')]:
+            with self.subTest(op=op):
+                self.assert_error(code, lambda: primitive(op, values).call('main', []))
+        for raw in ['+1', ' 1', '1 ', '1_000', '1e3', '１２']:
+            with self.subTest(raw=raw):
+                self.assert_error('value_error', lambda: primitive('parse_int', [raw]).call('main', []))
+        for left, right, expected in [(True, 1, False), (1, 1.0, False),
+                                      ({'a': [True]}, {'a': [1]}, False),
+                                      ({'x': 1, 'y': 2}, {'y': 2, 'x': 1}, True)]:
+            self.assertIs(primitive('eq', [left, right]).call('main', []), expected)
 
-    def test_maximum_depth_repeated_edges_and_unreachable_invalid_state(self):
-        document = {"format": "mairg-1", "inputs": [["flag", "bool"]],
-                    "nodes": [[0, "input", 0]] + [[i, "and", i - 1, i - 1] for i in range(1, MAX_DEPTH)],
-                    "outputs": [["count", "count", MAX_DEPTH - 1]]}
-        document["nodes"].reverse()
-        program = validate(document)
-        self.assertEqual(interpret(program, {"flag": [True, False, True]}), {"count": 2})
-        self.assertEqual(interpret(optimize(program).program, {"flag": [True, False, True]}), {"count": 2})
-        excessive = copy.deepcopy(document)
-        excessive["nodes"].append([MAX_DEPTH, "not", MAX_DEPTH - 1])
-        with self.assertRaises(MairgError):
-            validate(excessive)
-        for suffix in ([[10000, "not", 10000]],
-                       [[10000, "not", 10001], [10001, "not", 10000]],
-                       [[10000, "add", 0, 0]], [[10000, "not", 20000]]):
-            invalid = copy.deepcopy(document)
-            invalid["nodes"].extend(suffix)
-            with self.subTest(suffix=suffix), self.assertRaises(MairgError):
-                validate(invalid)
+    def test_raw_documents_dead_nodes_and_removed_format_fail_closed(self) -> None:
+        good = function(0, [literal(0, 1)])
+        dead_nodes = [node(1, 'not', 1), node(1, 'add', 99, 99),
+                      node(1, 'const', value=1, invented=True),
+                      node(1, 'call', target=999), node(1, 'param', index=0),
+                      node(1, 'record', 0, 0, keys=['same', 'same']),
+                      node(1, 'not', 0, after=[0, 0])]
+        for dead in dead_nodes:
+            with self.subTest(dead=dead):
+                self.assert_error('invalid_program', lambda: compile_graph([
+                    function(0, good['nodes'] + [dead], returns=0)]))
+        self.assert_error('invalid_program', lambda: compile_graph([
+            good, function(1, [node(0, 'no_such_op')])]))
+        # Caller dictionaries never acquire trusted-IR status through a previous check.
+        source = [copy.deepcopy(good)]
+        self.assertEqual(compile_graph(source).call('main', []), 1)
+        source[0]['nodes'][0]['op'] = 'python.eval'
+        self.assert_error('invalid_program', lambda: compile_graph(source))
+        manifest = {'format': 'mairg-project-1', 'name': 'reject-old', 'program': 'a.json',
+                    'bindings': {}, 'database': None, 'assets': [], 'routes': [],
+                    'startup': None, 'tests': []}
+        self.assert_error('invalid_program', lambda: compile_documents(manifest,
+            {'format': 'mairg-1', 'functions': [], 'exports': {}}, root='/tmp', assets={}))
+        for text in ['{"a":1,"a":2}', 'NaN', 'Infinity', '[1e999]', '{', '"\\ud800"']:
+            with self.subTest(text=text), self.assertRaises(AppError):
+                decode_json(text)
+        cycle: list[Any] = []
+        cycle.append(cycle)
+        identity = compile_graph([function(0, [node(0, 'param', index=0)], params=['any'])])
+        for value in [cycle, {1: 'bad'}, b'bytes', (1, 2), float('inf')]:
+            with self.subTest(value_type=type(value).__name__), self.assertRaises(AppError):
+                identity.call('main', [value])
+
+    def test_boundary_values_source_assets_and_description_are_detached(self) -> None:
+        value = {'items': [{'s': 'original'}]}
+        source = [function(0, [literal(0, value)])]
+        project = compile_graph(source)
+        value['items'][0]['s'] = 'source changed'
+        actual = project.call('main', [])
+        actual['items'].clear()
+        project.document['functions'].clear()
+        project.manifest['bindings']['bad'] = 'file.write_text'
+        self.assertEqual(project.call('main', []), {'items': [{'s': 'original'}]})
+        identity = compile_graph([function(0, [node(0, 'param', index=0)], params=['record'])])
+        arg = {'nested': []}
+        returned = identity.call('main', [arg])
+        returned['nested'].append('changed')
+        self.assertEqual(arg, {'nested': []})
+        description = identity.describe()
+        description['exports']['main']['params'][0] = 'bool'
+        description['exports']['main']['effects'].append(['file', 'write'])
+        self.assertEqual(identity.call('main', [{'nested': []}]), {'nested': []})
+        self.assertEqual(identity.describe()['exports']['main']['effects'], [])
+        assets = {'message.txt': 'immutable λ'}
+        text = compile_graph([function(0, [literal(0, 'message.txt'), node(1, 'asset.text', 0)])], assets=assets)
+        assets['message.txt'] = 'changed'
+        text.assets['message.txt'] = 'changed again'
+        self.assertEqual(text.call('main', []), 'immutable λ')
+        payload = "__import__('pathlib').Path('/tmp/mairg-injection-marker').touch()"
+        self.assertEqual(primitive('to_text', [payload]).call('main', []), payload)
+
+    def test_direct_ast_has_one_live_assignment_per_node(self) -> None:
+        nodes = [literal(11, 7), node(12, 'add', 11, 11), node(13, 'mul', 12, 12), literal(99, 'dead')]
+        project = compile_graph([function(42, nodes, returns=13)])
+        generated = ast.parse(project.generated_source)
+        body = next(n for n in generated.body if isinstance(n, ast.FunctionDef) and n.name == '_f_42')
+        assignments = [n for n in body.body if isinstance(n, ast.Assign)]
+        self.assertEqual(len(assignments), 3)
+        self.assertEqual([n.targets[0].id for n in assignments], ['n_11', 'n_12', 'n_13'])
+        self.assertFalse(any(isinstance(n, (ast.For, ast.While, ast.Lambda, ast.Try)) for n in ast.walk(body)))
+        self.assertEqual(project.call('main', []), 196)
+
+    def test_calls_selected_signatures_and_attempt_success_enforce_actual_types(self) -> None:
+        text_branch = function(1, [node(0, 'param', index=0)], params=['str'], result='str')
+        integer_branch = function(2, [node(0, 'param', index=0)], params=['int'], result='int')
+        main = function(0, [node(0, 'param', index=0), node(1, 'param', index=1),
+            node(2, 'choose', 0, 1, then=1, **{'else': 2})], params=['bool', 'any'])
+        project = compile_graph([main, text_branch, integer_branch])
+        self.assertEqual(project.call('main', [True, 'yes']), 'yes')
+        self.assertIs(type(project.call('main', [False, 7])), int)
+        self.assert_error('type_error', lambda: project.call('main', [True, 7]))
+        self.assert_error('type_error', lambda: project.call('main', [False, 'wrong']))
+        self.assert_error('type_error', lambda: project.call('main', [1, 'yes']))
+        attempted = function(0, [literal(0, 'confirmed'), node(1, 'attempt', 0, target=1)])
+        self.assertEqual(compile_graph([attempted, text_branch]).call('main', []),
+                         {'ok': True, 'value': 'confirmed'})
+        for operation in ['call', 'attempt', 'transaction', 'map', 'filter', 'fold']:
+            arguments = [0, 0] if operation == 'fold' else []
+            # A two-argument target cannot be used by these non-fold forms.
+            target = function(1, [literal(0, None)], params=['any'] * (1 if operation == 'fold' else 2))
+            source = function(0, [literal(0, []), node(1, operation, *arguments, target=1)])
+            with self.subTest(operation=operation):
+                self.assert_error('invalid_program', lambda: compile_graph([source, target]))
+
+    def test_eager_dependencies_and_rejected_root_arguments_precede_effects(self) -> None:
+        for operation in ['and', 'or']:
+            source = function(0, [literal(0, operation == 'or'), literal(1, 'eager'),
+                literal(2, 'argument evaluated'), node(3, 'fail', 1, 2), node(4, operation, 0, 3)])
+            self.assert_error('eager', lambda: compile_graph([source]).call('main', []))
+        source = function(0, [node(0, 'param', index=0), literal(1, 'never.txt'),
+            node(2, 'host', 1, 0, binding='write')], params=['str'])
+        project = compile_graph([source], bindings={'write': 'file.write_text'})
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp) / 'state-not-created'
+            for arguments in [[True], [], ['x', 'extra'], 'not-array']:
+                with self.subTest(arguments=arguments):
+                    self.assert_error('type_error', lambda: project.call('main', arguments, state_dir=state))
+                    self.assertFalse(state.exists())
+
+    def test_lazy_branch_shared_effect_once_and_distinct_calls_use_real_sqlite(self) -> None:
+        increment = function(1, [literal(0, 'INSERT INTO events(value) VALUES (?) RETURNING value'),
+            literal(1, ['once']), node(2, 'host', 0, 1, binding='write')], result='record')
+        forbidden = function(2, [literal(0, 'unselected.txt'), literal(1, 'must not write'),
+            node(2, 'host', 0, 1, binding='file')])
+        main = function(0, [literal(0, True), node(1, 'choose', 0, then=1, **{'else': 2}),
+            node(2, 'list', 1, 1)])
+        bindings = {'write': 'sqlite.execute', 'file': 'file.write_text'}
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp)
+            (state / 'db').mkdir()
+            with closing(sqlite3.connect(state / 'db' / 'proof.sqlite3')) as db:
+                db.execute('CREATE TABLE events(value TEXT)')
+                db.commit()
+            project = compile_graph([main, increment, forbidden], bindings=bindings, database='proof.sqlite3')
+            values = project.call('main', [], state_dir=state)
+            self.assertEqual(values, [{'rows': [{'value': 'once'}], 'changes': 1}] * 2)
+            self.assertFalse((state / 'files' / 'unselected.txt').exists())
+            with closing(sqlite3.connect(state / 'db' / 'proof.sqlite3')) as db:
+                self.assertEqual(db.execute('SELECT count(*) FROM events').fetchone(), (1,))
+            twice = function(0, [node(5, 'call', target=1), node(6, 'call', target=1, after=[5]),
+                                 node(7, 'list', 5, 6)])
+            compile_graph([twice, increment], bindings=bindings, database='proof.sqlite3').call('main', [], state_dir=state)
+            with closing(sqlite3.connect(state / 'db' / 'proof.sqlite3')) as db:
+                self.assertEqual(db.execute('SELECT count(*) FROM events').fetchone(), (3,))
+
+    def test_attempt_invokes_once_and_does_not_catch_its_argument_failure(self) -> None:
+        failing = function(1, [literal(0, 'INSERT INTO events(value) VALUES (?)'), literal(1, ['committed']),
+            node(2, 'host', 0, 1, binding='write'), literal(3, 'business_failure'),
+            literal(4, 'after confirmed standalone commit'), node(5, 'fail', 3, 4, after=[2])])
+        main = function(0, [node(0, 'attempt', target=1), node(1, 'list', 0, 0)])
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp)
+            (state / 'db').mkdir()
+            with closing(sqlite3.connect(state / 'db' / 'proof.sqlite3')) as db:
+                db.execute('CREATE TABLE events(value TEXT)')
+                db.commit()
+            project = compile_graph([main, failing], bindings={'write': 'sqlite.execute'}, database='proof.sqlite3')
+            result = project.call('main', [], state_dir=state)
+            self.assertEqual(result[0], result[1])
+            self.assertFalse(result[0]['ok'])
+            self.assertEqual(result[0]['error']['code'], 'business_failure')
+            with closing(sqlite3.connect(state / 'db' / 'proof.sqlite3')) as db:
+                self.assertEqual(db.execute('SELECT count(*) FROM events').fetchone(), (1,))
+        identity = function(1, [node(0, 'param', index=0)], params=['any'])
+        outside = function(0, [literal(0, 'outside'), literal(1, 'argument fails first'),
+                              node(2, 'fail', 0, 1), node(3, 'attempt', 2, target=1)])
+        self.assert_error('outside', lambda: compile_graph([outside, identity]).call('main', []))
+
+    def test_transaction_result_validation_rolls_back_real_database(self) -> None:
+        bad_result = function(1, [literal(0, 'INSERT INTO events(value) VALUES (?)'), literal(1, ['rolled back']),
+            node(2, 'host', 0, 1, binding='write'), literal(3, 'not int'),
+            node(4, 'to_text', 3, after=[2])], result='int')
+        transaction = function(2, [node(0, 'transaction', target=1)])
+        main = function(0, [node(0, 'attempt', target=2)])
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp)
+            (state / 'db').mkdir()
+            with closing(sqlite3.connect(state / 'db' / 'proof.sqlite3')) as db:
+                db.execute('CREATE TABLE events(value TEXT)')
+                db.commit()
+            project = compile_graph([main, bad_result, transaction], bindings={'write': 'sqlite.execute'}, database='proof.sqlite3')
+            self.assertEqual(project.call('main', [], state_dir=state)['error']['code'], 'type_error')
+            with closing(sqlite3.connect(state / 'db' / 'proof.sqlite3')) as db:
+                self.assertEqual(db.execute('SELECT count(*) FROM events').fetchone(), (0,))
+
+    def test_fixed_point_effects_alias_conflicts_and_unreachable_effects_reject(self) -> None:
+        leaf = function(9, [literal(0, 'x'), literal(1, 'text'), node(2, 'host', 0, 1, binding='alias_b')], params=['any'])
+        middle = function(8, [node(0, 'param', index=0), node(1, 'call', 0, target=9)], params=['any'])
+        mapped = function(0, [literal(0, []), node(1, 'map', 0, target=8)])
+        bindings = {'alias_a': 'file.write_text', 'alias_b': 'file.write_text'}
+        self.assert_error('invalid_program', lambda: compile_graph([mapped, middle, leaf], bindings=bindings))
+        filtered = copy.deepcopy(mapped)
+        filtered['nodes'][1]['op'] = 'filter'
+        self.assert_error('invalid_program', lambda: compile_graph([filtered, middle, leaf], bindings=bindings))
+        unordered = function(0, [literal(0, 'x'), literal(1, 'first'), node(2, 'host', 0, 1, binding='alias_a'),
+            node(3, 'call', 1, target=8), node(4, 'list', 2, 3)])
+        self.assert_error('invalid_program', lambda: compile_graph([unordered, middle, leaf], bindings=bindings))
+        unreachable = copy.deepcopy(unordered)
+        unreachable['return'] = 0
+        self.assert_error('invalid_program', lambda: compile_graph([unreachable, middle, leaf], bindings=bindings))
+        # Fixed point must cross recursive call cycles, even for an empty map.
+        recursive = function(7, [node(0, 'param', index=0), node(1, 'call', 0, target=8)])
+        recursive['params'] = ['any']
+        cycle_middle = function(8, [node(0, 'param', index=0), node(1, 'call', 0, target=7),
+            node(2, 'call', 0, target=9, after=[1])], params=['any'])
+        self.assert_error('invalid_program', lambda: compile_graph([mapped, recursive, cycle_middle, leaf], bindings=bindings))
+
+    def test_pure_map_filter_and_effectful_fold_preserve_order(self) -> None:
+        double = function(1, [node(0, 'param', index=0), node(1, 'mul', 0, 0)], params=['int'], result='int')
+        positive = function(2, [node(0, 'param', index=0), literal(1, 0), node(2, 'gt', 0, 1)], params=['int'], result='bool')
+        main = function(0, [literal(0, [-2, 0, 3]), node(1, 'filter', 0, target=2), node(2, 'map', 1, target=1)])
+        self.assertEqual(compile_graph([main, double, positive]).call('main', []), [9])
+        wrong = function(2, [literal(0, 1)], params=['int'], result='int')
+        self.assert_error('type_error', lambda: compile_graph([main, double, wrong]).call('main', []))
+        folder = function(3, [node(0, 'param', index=0), node(1, 'param', index=1),
+            literal(2, 'log.txt'), node(3, 'concat', 0, 1),
+            node(4, 'host', 2, 3, binding='write'), node(5, 'to_text', 3, after=[4])],
+            params=['str', 'str'], result='str')
+        folded = function(0, [literal(0, ['a', 'β', 'c']), literal(1, ''), node(2, 'fold', 0, 1, target=3)])
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(compile_graph([folded, folder], bindings={'write': 'file.write_text'}).call('main', [], state_dir=tmp), 'aβc')
+            self.assertEqual((Path(tmp) / 'files' / 'log.txt').read_text(), 'aβc')
+
+    def test_recursion_and_nested_attempts_share_uncatchable_root_limits(self) -> None:
+        main = function(0, [node(0, 'attempt', target=1)])
+        recurse = function(1, [node(0, 'call', target=1)])
+        self.assert_error('resource_limit', lambda: compile_graph([main, recurse]).call('main', []))
+        # Each callback is small; aggregate work alone exhausts the root budget.
+        callback_nodes = [node(0, 'param', index=0)] + [node(i, 'not', i - 1) for i in range(1, 11)]
+        callback = function(2, callback_nodes, params=['bool'], result='bool')
+        mapped = function(1, [literal(0, [False] * 100_000), node(1, 'map', 0, target=2)])
+        self.assert_error('resource_limit', lambda: compile_graph([main, mapped, callback]).call('main', []))
+
+    def test_seeded_integer_dags_and_opaque_id_declaration_metamorphisms(self) -> None:
+        rng = random.Random(74219)
+        for case in range(32):
+            values = [rng.randrange(-20, 21) for _ in range(3)]
+            nodes = [literal(i, value) for i, value in enumerate(values)]
+            for index in range(3, 18):
+                left, right = rng.randrange(index), rng.randrange(index)
+                operation = rng.choice(['add', 'sub', 'mul'])
+                a, b = values[left], values[right]
+                values.append(a + b if operation == 'add' else a - b if operation == 'sub' else a * b)
+                nodes.append(node(index, operation, left, right))
+            graph = [function(0, nodes)]
+            original = compile_graph(graph)
+            with self.subTest(case=case):
+                self.assertEqual(original.call('main', []), values[-1])
+                renamed = rename_program(graph, case)
+                self.assertEqual(compile_graph(renamed).call('main', []), values[-1])
+                shuffled = copy.deepcopy(graph)
+                rng.shuffle(shuffled[0]['nodes'])
+                self.assertEqual(compile_graph(shuffled).source_revision, original.source_revision)
+
+    def test_declared_effect_order_survives_id_and_function_renaming(self) -> None:
+        writer = function(2, [node(0, 'param', index=0), literal(1, 'ordered.txt'),
+            node(2, 'host', 1, 0, binding='write')], params=['str'])
+        main = function(0, [literal(10, 'first'), literal(20, 'second'),
+            node(30, 'call', 10, target=2), node(40, 'call', 20, target=2, after=[30]),
+            literal(50, 'ordered.txt'), node(60, 'host', 50, binding='read', after=[40])])
+        for seed in range(8):
+            graph = rename_program([main, writer], seed)
+            # Identify the exported main by its zero-argument public signature.
+            main_id = next(f['id'] for f in graph if not f['params'])
+            with self.subTest(seed=seed), tempfile.TemporaryDirectory() as tmp:
+                project = compile_graph(graph, bindings={'write': 'file.write_text', 'read': 'file.read_text'}, exports={'main': main_id})
+                self.assertEqual(project.call('main', [], state_dir=tmp), 'second')
+                self.assertEqual((Path(tmp) / 'files' / 'ordered.txt').read_text(), 'second')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()

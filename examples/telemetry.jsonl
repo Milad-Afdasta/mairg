@@ -1,4 +1,0 @@
-{"status":200,"latency_us":100,"bytes":1000,"cached":true}
-{"status":500,"latency_us":1000,"bytes":2000,"cached":false}
-{"status":503,"latency_us":5000,"bytes":3000,"cached":false}
-{"status":499,"latency_us":999,"bytes":400,"cached":true}

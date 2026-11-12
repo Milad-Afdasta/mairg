@@ -1,0 +1,55 @@
+{
+  "format": "mairg-project-1",
+  "name": "inventory",
+  "program": "program.json",
+  "bindings": {
+    "query": "sqlite.query",
+    "execute": "sqlite.execute"
+  },
+  "database": "inventory.sqlite3",
+  "assets": [
+    "schema.json",
+    "migrations/001.json"
+  ],
+  "startup": "startup",
+  "tests": [
+    "tests.json"
+  ],
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/items",
+      "export": "http_list_items"
+    },
+    {
+      "method": "POST",
+      "path": "/items",
+      "export": "http_create_item"
+    },
+    {
+      "method": "GET",
+      "path": "/items/{id}",
+      "export": "http_get_item"
+    },
+    {
+      "method": "PUT",
+      "path": "/items/{id}",
+      "export": "http_update_item"
+    },
+    {
+      "method": "DELETE",
+      "path": "/items/{id}",
+      "export": "http_delete_item"
+    },
+    {
+      "method": "GET",
+      "path": "/reservations",
+      "export": "http_list_reservations"
+    },
+    {
+      "method": "POST",
+      "path": "/reservations",
+      "export": "http_reserve"
+    }
+  ]
+}

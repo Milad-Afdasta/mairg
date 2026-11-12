@@ -1,100 +1,142 @@
-# MAIRG 1 specification (initial release)
+# MAIRG practical proof of concept
 
-Status: approved pre-edit specification by all three independent reviewers. Canonical model: MAIRG-M2, revision 2.
+Status: proposed exact specification for MAIRG-M4, model revision 4. No runtime edit until the three new specification reviewers approve the exact model. This supersedes the numeric-only product scope and the larger production-platform draft. The user's latest request is a practical POC.
 
-## Objective and first target
+## Success
 
-A language for machine-authored deterministic batch workers. Canonical programs are dependency graphs, not sequential source. The compiler owns ordering, shared-expression elimination, dead-code removal, constant folding, and fused traversal. No handwritten loops, mutation, classes, user scheduling, or meaningful internal variable names are required. JSON is an interoperable transport, not a claim of optimal AI tokenization. Symbolic opcodes retain model vocabulary; their benefit remains a testable hypothesis.
+A new developer can create a project, express application logic as a graph, check/test it, run a useful persistent HTTP API or CLI, build a runnable directory, and run it outside the checkout without installing MAIRG. A fresh agent must author a second different application using the documented language with no runtime edits. Complete-application behavior and a traditional Python comparison follow practical acceptance; numeric microbenchmarks are not success.
 
-This release is deliberately a domain-specific compiled language, not a universal language. It computes unsigned telemetry statistics. It does not handle floats, signed numbers, strings as computational values, arbitrary functions, recursion, I/O, concurrency, division, shifts, or persistent state. These are future design questions, not hidden fallbacks. External effects belong to the host.
+This POC is not production-ready or a universal app platform. Multi-module imports, third-party adapters, outgoing HTTP, authentication frameworks, native optimization, and broad deployment integrations are deferred. These are not replaced by hidden Python callbacks containing the application.
 
-## Source document
+## Source and values
 
-Exactly four keys: `format`, `inputs`, `nodes`, `outputs`. Format is exactly `mairg-1`. All arrays below are actual JSON arrays. Unknown keys, duplicate JSON keys, NaN/Infinity, malformed JSON, excessive JSON nesting (including parser RecursionError), and unsupported format are structured errors.
+The only current program format is `mairg-app-1`; old `mairg-1` is rejected, not converted or dispatched to another engine. Exactly `format`, `functions`, `exports` are present.
 
-Inputs: ordered array of `[external_name, type]`; types are `u64` or `bool`. Names are nonempty strings of at most 128 Unicode code points and must be unique within inputs. Output names follow the same rule and are unique within outputs. Input and output namespaces are distinct. Names are never inserted into native source: ABI positions carry identities.
+Values: null, exact bool, int, finite float, Unicode str, list, string-keyed record. Bool/int/float are distinct for equality. Arithmetic on ints is exact; floats are binary64 and must stay finite. No implicit numeric/string casts. JSON duplicate keys, NaN/Infinity, malformed/excessively nested input, cycles in supplied Python values, and non-JSON values reject with structured errors.
 
-Nodes: unordered array of `[id, opcode, ...operands]`. IDs are opaque integers in `[0, 2^31-1]`; booleans are not IDs. IDs must be unique. Forward references are valid. Every node, including unreachable nodes, must be well typed and acyclic. Node order and ID spelling have no meaning beyond references.
+Function type atoms: `any`, `null`, `bool`, `int`, `float`, `number`, `str`, `list`, `record`. Number accepts int/float, never bool. Any is an explicit dynamic JSON type. Params and return values are checked; operations check actual operands at runtime. This POC does not claim complete static type inference.
 
-Limits: UTF-8 source <= 1 MiB; 1..128 inputs; 1..4096 nodes; 1..128 outputs; dependency depth <=256. The longest path counts nodes, including leaves. Validate iteratively, without recursive graph traversal. The in-memory `validate(dict)` API applies the same structural limits; serialized bytes are checked by `loads`/`load`.
+Functions are unordered objects with exactly `id`, `params`, `result`, `nodes`, `return`. ID is an opaque integer 0..2^31-1, unique in the program. Params is an ordered array of type atoms; result is one atom; return is a node ID. Exports maps meaningful external names to function IDs. All functions, including uncalled ones, validate. Recursion is allowed.
 
-## Scalar operations
+Nodes are unordered objects with required `id`, `op`, `args`, optional `after`, plus only catalog-specific fields. IDs are opaque and unique per function. Args/after are local node references; forward references are valid. After defaults empty, cannot duplicate entries, and adds causal dependencies whose values are discarded. A function graph must be acyclic, including dead nodes. Every node validates before pure dead-node removal. Every effectful node must be reachable from return through args/after; unused writes/calls cannot silently disappear.
 
-One canonical operation registry in `mairg/ir.py` defines arity and typing for validation, optimization dispatch coverage, and documentation/tests.
+Limits: source<=1 MiB; <=128 functions; <=1024 nodes/function; dependency depth<=256; <=64 params; JSON depth<=128; <=100,000 collection elements; call depth<=64; <=1,000,000 node evaluations/root call; HTTP input<=1 MiB; file/value input/output<=16 MiB; integer magnitude<=65,536 bits. Size-growing primitives check prospective sizes before allocation where the bound is computable. All child calls/maps/folds/attempts share one budget. Limits raise `resource_limit`, never partial success. Resource-limit and cancellation errors cannot be caught to reset a budget.
 
-| Opcode | Operands | Result |
+## One canonical operation catalog
+
+`mairg/language.py` owns OPS and HOSTS descriptions/arity. Every implementation dispatch is mechanically checked against them. All node args below are references, never embedded expressions. Unknown fields reject.
+
+| Op | Args | Extra fields | Meaning |
+|---|---:|---|---|
+| param |0| index:int | Current function argument |
+| const |0| value:JSON | Fresh immutable-semantics value |
+| record |N| keys:N distinct strings | Construct record |
+| list |N| none | Construct list |
+| field |2| none | Record, string key; missing fails |
+| index |2| none | List/string, nonnegative in-range int |
+| set_field |3| none | Record, key, value -> new record |
+| length |1| none | String/list/record length |
+| concat |2| none | Two strings or two lists of identical kind |
+| keys |1| none | Record keys sorted by Unicode codepoint |
+| contains |2| none | String substring, list strict structural equality, or record string-key membership |
+| eq |2| none | Strict typed structural JSON equality |
+| lt/le/gt/ge |2| none | Same numeric kind or two strings |
+| add/sub/mul |2| none | Two ints or two floats of same kind |
+| div |2| none | Two numbers, nonzero divisor -> finite float; explicit division defines conversion |
+| mod |2| none | Two ints; remainder has divisor sign; zero fails |
+| neg |1| none | Int/float negation |
+| and/or |2| none | Eager bool operations |
+| not |1| none | Bool negation |
+| text.trim/lower/upper |1| none | Unicode string operation |
+| text.split |2| none | Text and nonempty separator |
+| text.join |2| none | Separator and list of strings |
+| text.replace |3| none | Text, nonempty old text, new text |
+| json.parse |1| none | Strict JSON string decode |
+| json.stringify |1| none | Compact sorted-key JSON text |
+| parse_int |1| none | Decimal string, optional minus, no whitespace/underscores/exponent |
+| to_text |1| none | String unchanged; other JSON uses compact JSON |
+| asset.text |1| none | Declared relative asset -> immutable snapshotted UTF-8 text |
+| call |N| target:functionID | Reusable function call |
+| choose |1+N| then/else:functionIDs | Strict bool then one selected function with remaining args |
+| map/filter |1| target:functionID | List; pure unary callback; filter actually returns bool |
+| fold |2| target:functionID | List, initial accumulator; ordered callback(acc,item), may have effects |
+| attempt |N| target:functionID | Call once; tagged success/failure |
+| fail |2| none | String code/message -> application error |
+| host |N| binding:string | Declared generic host binding |
+| transaction |N| target:functionID | DB-only function in actual SQLite transaction |
+
+Calls/branches/callback arities validate before execution. Runtime checks each actual argument/result type; branch/fold signature types need not be textually identical. Attempt returns `{ok:true,value:JSON}` or `{ok:false,error:{code,message,function,node,details}}`; it catches target errors only, after its own arguments are evaluated. Resource exhaustion/cancellation propagate.
+
+## Compilation and effects
+
+Compile live nodes into straight-line Python AST assignments in dependency order, one assignment per live node in a fresh frame. Shared producers execute once. Choose/attempt bodies are separate function calls and remain lazy. A failure aborts the frame, so no failed effect is replayed for a second consumer. Distinct call nodes are separate invocations. No thunk VM, exception cache, speculative CSE, or partial-op constant folding is needed.
+
+All user data becomes AST literals, never Python expressions or identifiers. Internal names are compiler-assigned. Compile/unparse produces a real generated program module; building is not merely copying JSON. Independent failing nodes have unspecified error precedence. Declaration order/opaque IDs cannot impose causal order or stable business identity. ID renaming preserves successful behavior and the declared partial-order constraints on effects; on failure, any completed unordered effects may remain, so source must add dependencies when that ordering matters; generated bytes/source diagnostic IDs need not be identical.
+
+Infer function effects to fixed point: `(db|file, read|write)`. Host calls use their underlying resource domain, not binding aliases. Transaction is db/write. Calls/choose/map/filter/fold/attempt propagate effects. Pure map/filter callbacks have empty transitive effect sets. In a live function, two nodes sharing a domain require a dependency path when either may write; otherwise reject. Two reads may be unordered. Collection fold explicitly supplies sequential recurrence. Never choose write ordering from declaration position or node IDs.
+
+No exactly-once claim across crashes/calls, automatic retries, cross-resource rollback, or sandbox. Confirmed DB commits are not reversed by a later file/response failure. Request-local frames, budgets, host connections, and mutable values are isolated; callers cannot mutate future constant/result values through returned references.
+
+## Project and resources
+
+`mairg.json` has exactly `format`, `name`, `program`, `bindings`, `database`, `assets`, `routes`, `startup`, `tests`. Format=`mairg-project-1`. Program is one project-relative source file. Bindings maps external binding names to HOSTS builtin names. Database is null or one project-state-relative SQLite path. Assets is an array of project-relative UTF-8 files snapshotted at compilation; no directories. Routes is an array of `{method,path,export}`. Startup is null or a zero-argument exported function, called before serving. Tests is an array of project-relative test-fixture files.
+
+Program/asset/test paths are canonical relative paths confined to project root; reject `..`, absolute paths, escaped symlinks and canonical duplicates. Source/project loading/checking performs no application effects. App schema/migration files are assets, never autoexecuted by MAIRG.
+
+File and DB effects require an explicit `--state-dir`; no CWD/source-tree fallback. Generic file paths resolve only under STATE_DIR/files; database paths resolve only under STATE_DIR/db. These canonical subtrees must be disjoint, inside the chosen state root, and cannot alias through symlinks. Generic file hosts cannot reach database files or SQLite sidecars. One canonical DB identity owns all SQL effects. Source/assets are separate immutable snapshots and must never be mistaken for writable state. Resource directories may be created only during explicit execution after invocation arguments validate; checking/describing/building does not create app state.
+
+## Host catalog and transaction owner
+
+| Builtin | Args -> result | Effect |
 |---|---|---|
-| `input` | input-position integer | declared input type |
-| `u64` | integer literal 0..2^64-1 | u64 |
-| `bool` | JSON boolean literal | bool |
-| `add`, `sub`, `mul`, `bit_and`, `bit_or`, `bit_xor` | two u64 node references | u64 |
-| `eq` | two references of identical scalar type | bool |
-| `lt`, `le`, `gt`, `ge` | two u64 references | bool |
-| `and`, `or` | two bool references | bool |
-| `not` | one bool reference | bool |
-| `select` | bool condition, two references of identical type | branch type |
+| file.read_text | str -> str, strict UTF-8, bounded | file/read |
+| file.write_text | str,str -> null; atomic replacement | file/write |
+| file.read_csv | str -> list of string records; distinct nonempty headers/exact row width | file/read |
+| sqlite.query | str,list -> list of records; parameterized/read-only | db/read |
+| sqlite.execute | str,list -> `{rows:list,changes:int}`; RETURNING rows supported | db/write |
 
-Every arithmetic operation and sum is modulo 2^64, including subtraction. No implicit conversions. Inputs reject Python bool as u64, floats, negative numbers, out-of-range integers, strings, nulls, and non-bool values for bool. All operations are total for valid types; both select branches are pure/total, so evaluation order is unobservable.
+No application/table/route/business-field names occur in host dispatch. CSV normalization/conversion/policy is application logic. SQL values are parameters, not interpolated source. SQLite bindings accept null/bool/int64/finite float/str; bool maps to0/1 only at this defined protocol boundary. Compound values/big ints/BLOB or nonfinite returned values reject. Query column names must be unique, never silently overwritten.
 
-## Outputs and batch semantics
+Read-only SQL is enforced with SQLite authorizer actions, including rejection of INSERT RETURNING, transaction control, ATTACH/DETACH, writes/DDL and write PRAGMAs. Execute also denies user transaction control, ATTACH/DETACH, and changes to adapter-owned durability/foreign-key settings. Do not classify SQL by prefix. App-owned PRAGMA user_version is allowed where safe. Each call executes one statement; multiple statements reject. Builtin extensions that escape this owner are not enabled.
 
-An output is one of:
+One SQLite connection per standalone SQL operation, or one shared connection per explicit transaction region. Use `isolation_level=None`, foreign_keys=ON, synchronous=FULL, bounded busy timeout, and owner-issued BEGIN IMMEDIATE/commit/rollback outside the user-SQL authorizer. Standalone execute owns one transaction. Transaction target's transitive effects must be only db reads/writes, with no nested transaction; reject statically/dynamically. Asset reads/pure computation are allowed. Function return/result JSON is checked before region commit. Schema/result/SQL/error/cancellation failures rollback before connection close. Failed/unknown commit is never retried or described as a guaranteed rollback unless rollback was confirmed; preserve the primary error if cleanup also fails.
 
-- `[name, "count", predicate_node]`
-- `[name, "sum", u64_node, predicate_node]`
-- `[name, "max", u64_node, predicate_node]`
-- `[name, "xor", u64_node, predicate_node]`
+File write uses a private same-directory temp, UTF-8 write, flush/fsync, then os.replace. Failure before replacement preserves existing file and removes owned temp. Failure after replacement may be unknown durability, never false success or hidden retry. The containing state-root/path identity is verified before use. No distributed atomicity is claimed between DB and files.
 
-Predicates must be bool. All results are u64. `count` counts selected rows modulo 2^64; `sum` adds selected values modulo 2^64; `max` finds the greatest selected u64; `xor` bitwise-XORs selected values. All four identity results are zero, including empty input or no matching rows. Output declaration order is preserved in the result and ABI.
+## WSGI and server
 
-Public column input is a mapping with exactly the declared input names; columns are list/tuple sequences, equal length, and strictly typed. An empty batch still supplies all columns. Validate the whole batch before calling native code or returning results. Record input similarly requires each row to have exactly the declared fields. One invalid row rejects the entire invocation; no partial aggregates are returned. No coercion or default fields.
+Use Waitress 3.0.2, not a custom HTTP protocol server. WSGI handler input is exactly `{method,path,params,query,headers,body}`; query values are arrays of strings, request headers lowercase, body is strict JSON or null. Malformed/oversize input rejects before application effects. Result is exactly `{status:int,headers:map<str>,body:JSON}`. Status 200..599. web.py exclusively owns response framing: application Content-Length, Content-Type, Connection, Keep-Alive, Proxy-Authenticate, Proxy-Authorization, TE, Trailer/Trailers, Transfer-Encoding, and Upgrade reject case-insensitively. Other header names must be ASCII HTTP tokens; values must encode as Latin-1 and contain no forbidden controls/CR/LF/NUL. The host serializes body to UTF-8 JSON and derives Content-Length/Content-Type before start_response. 204/304 require null body and emit no body bytes.
 
-## Canonical plan and structural editing
+Routes use whole-segment `{name}` parameters. Literal segments take precedence; equal-specificity overlapping patterns reject. Matching is independent of manifest order. Exact method routes only. Standard404/405/400/413/500 errors are generated by transport; business statuses/rules are authored in graphs. No handler replay on disconnect. Plans are shared immutable data; every request has a new execution owner. Startup runs successfully before socket readiness.
 
-Validation precedes optimization. Remove unreachable valid nodes, fold literal-only operations, intern exact structural keys for common subexpressions, canonicalize lawful commutative operands, and emit deterministic dependency order with compiler-assigned IDs. `add`, `mul`, bitwise binary operations, `eq`, `and`, `or` are commutative; no other operation is. No speculative or floating-point rewrites.
+Actual Waitress cleanup: close server and task_dispatcher.shutdown(timeout=2); this stops acceptance/pending work and gives active handlers a bounded drain, not a claim that Python threads can be forcibly killed. Tests own the server process and classify in-flight outcomes without replay; exact assigned loopback ports in tests. A normal WSGI callable/factory is exported for reuse. This POC is not a production deployment/security claim.
 
-Plan fingerprint is SHA-256 of the canonical optimized document. Equivalent source declaration order and consistently renamed opaque IDs produce the same plan/fingerprint. Output/interface order and names remain contractual. SHA-256 is an identity checksum, not a proof of correctness; CSE uses exact structural keys, not hash equality.
+## Shared implementation APIs
 
-Canonical bytes are exactly `json.dumps(document, sort_keys=True, ensure_ascii=True, separators=(",", ":"), allow_nan=False).encode("ascii")`. Source revision is SHA-256 of these bytes for the source document with node declarations sorted numerically by source ID. It includes unused valid nodes and original IDs. Source revision identifies an edit base; plan fingerprint identifies compiled semantics. These are separate concepts.
+- `language.py`: `AppError(code,message,*,function=None,node=None,details=None)`, `.as_dict()` returns `{"error":...}`; strict decode/check JSON/type helpers; OPS/HOSTS canonical metadata.
+- `compiler.py`: `compile_project(root)->CompiledProject`; `compile_documents(manifest,document,*,root,assets)->CompiledProject`; validate raw documents every time. Project exposes copied manifest/document/assets, root, source_revision, generated_source, describe(). No caller-constructed typed-IR trust boundary.
+- `runtime.py`: CompiledProject.call(export,arguments,*,state_dir=None)->JSON and generated-function execution, budgets, pure/control ops. Each call creates an independent HostRuntime and closes it in finally. Compiler/runtime may place CompiledProject class in either file but publish it from compiler.py.
+- `hosts.py`: `HostRuntime(project,*,state_dir=None)`, `.call(binding,args)->JSON`, `.transaction()` context manager, `.close()`. Only generic adapters and actual resource ownership. Language runtime invokes transaction context around the target call.
+- `web.py`: `make_wsgi_app(project,*,state_dir=None)->callable`; `serve_project(project,host,port,*,state_dir=None)` Waitress lifecycle.
+- `project.py`: new/test/build/patch/source-revision helpers. No generic library/plugin implementation in this POC.
+- `cli.py`/`__main__.py`: transport for commands below.
 
-A patch is an object with required `base` (source revision), optional `set_nodes` (upsert node rows), optional `remove_nodes` (IDs), and optional `outputs` (entire replacement output list). No other keys. No duplicate or overlapping mutation IDs. Removal requires the ID to exist. Set replaces an existing node or creates a new one. Apply all edits to a fresh document, then validate the complete result. Missing/wrong base, invalid final graph, or any invalid edit rejects the entire patch. Input schema is not patchable. No source file is mutated: the CLI writes the valid result to stdout only after success. This is an atomic in-memory transaction, not a distributed mutation protocol.
+Builders coordinate ordinary internal symbol choices; changes to owners/identities/semantics require root model revision. No app-specific Python callback is an implementation shortcut.
 
-## Public Python interface and owner boundaries
+## Tool workflow and build
 
-Public consumers (`source_revision`, `optimize`, `apply_patch`, `interpret`, `emit_c`, `compile_program`, and column/batch preparation) re-establish validity through the one `ir.py` validator before using a `Program`. Frozen dataclasses and type annotations are not proof of validation. A `checked_program(program)` helper serializes and validates through that owner, then checks all supplied nonserialized metadata against the inferred reconstruction: each Node.type must exactly match its inferred type and each Output (including count.value=None) must exactly match its reconstructed metadata. Mismatches are rejected, never silently repaired or dropped. Consumers use only the reconstructed validated Program after comparison succeeds; private inner helpers may consume the resulting validated object to avoid repeated checks inside loops. Forged types, IDs, literals, and graphs are rejected as structured errors.
+Commands: `mairg new DIR [--template cli|api]`; `describe PROJECT`; `check PROJECT`; `run PROJECT EXPORT --args JSON [--state-dir DIR]`; `serve PROJECT --host127.0.0.1 --port8000 --state-dir DIR`; `test PROJECT`; `build PROJECT --output DIR`; `patch PROJECT PATCHFILE`. Run args is a JSON array. Success emits one JSON result; errors structured JSON on stderr/exit 2; cancellation 130. Server is the long-running exception.
 
-`mairg/ir.py` owns frozen `Node(id, op, args, type)`, `Output(name, op, value, where)`, `Program(inputs, nodes, outputs)`, operation/reduction catalog, `loads(text)`, `load(path)`, `validate(document)`, `to_document(program)`, and `source_revision(program)`. Nodes in a Program are topologically ordered. `Output.value` is None for count; other outputs reference u64 nodes. `args` contains literal/index values for leaf ops and node IDs for other ops. `MairgError(code, message, path)` provides `as_dict()` returning `{"error":{"code":...,"message":...,"path":...}}`.
+Fixture file is exactly `{files:{relativePath:text},cases:[...]}`. Each fixture gets a fresh owned state dir, initial files, and ordered cases. Cases are `{export,args,expect}` or `{export,args,error:code}`. Unexpected failure stops that fixture (remaining cases not run); independent fixtures can continue. Never mutate a user's DB for testing.
 
-`mairg/optimizer.py` owns `optimize(program) -> Plan`, with frozen `Plan(program, fingerprint, stats)`; stats include source/live/optimized node counts, folded/merged/dead counts, one row pass, and zero intermediate column buffers. `mairg/patch.py` owns `apply_patch(program, patch) -> Program`.
+Patch is exactly `{base,program}`: source revision over canonical manifest+whole source including IDs+asset hashes; replacement program validates against the whole existing project in memory. Return replacement JSON only after success. No file writes/partial mutation. Canonical JSON is sorted keys, ensure_ascii=True, compact separators; functions/nodes sorted by ID for revision so declaration shuffling leaves revision unchanged. ID renaming changes the edit revision, not meaning.
 
-`mairg/interpreter.py` independently implements source semantics via `interpret(program, columns) -> dict[str,int]`, plus shared boundary validation `validate_columns(program, columns) -> (columns_in_schema_order, row_count)` and `records_to_columns(program, records)`. Boundary checks may be shared; numerical evaluation must not call optimizer or codegen evaluation helpers.
+Build validates source and emits a directory with generated program.py (functions plus sole executable metadata), runtime package, bundled Waitress, immutable assets, bundle manifest/digests, and run.py. No third-party project dependencies in this POC. No MAIRG install or C compiler is required at runtime; Python 3.11+ is required. `python OUTPUT/run.py EXPORT --args ... --state-dir ...` and `python OUTPUT/run.py serve ...` run outside checkout. Bundle execution uses generated program/metadata only, never falls back to recompiling stale source. It checks its own format/runtime/digests and fails clearly on mismatch.
 
-`mairg/native.py` owns `emit_c(program) -> str`, `compile_program(program, optimize_enabled=True) -> CompiledProgram`, native buffers, compiler process, library loading, and cleanup. `CompiledProgram` is a context manager with `prepare(columns) -> PreparedBatch`, `run(columns) -> dict`, `run_prepared(batch) -> dict`, `close()`, `.plan`, and `.source`. A prepared batch pins ctypes buffers and declared input schema; another schema is rejected. Invocation after close is rejected. Batches may be reused across optimized/traditional kernels with the identical positional schema, but never across different schemas. Output buffers are fresh per call. Concurrent close/use is unsupported; this first host is synchronous and docs must say so. Raw ctypes internals are a trusted integration surface, not a security boundary.
+Build owns a sibling private staging dir and a per-output lock; existing output rejects. Publish only after import/describe smoke by atomic directory rename under that owner. Cooperative concurrent builds cannot overwrite each other; output namespace must not be concurrently mutated by other tools. Failure/cancellation cleans stage/lock; SIGKILL cleanup is not guaranteed. No target is reported built before publication.
 
-Native ABI: `void mairg_kernel(size_t n, const uint64_t *const *cols, uint64_t *out)`. Bool columns use validated 0/1 u64 storage. All operands and accumulators are unsigned. Generated source uses fixed templates, validated numeric literals, and compiler-generated names only. It contains one row loop for all outputs and no intermediate column arrays. Native compiler uses subprocess argv without a shell, fixed optimization flags `-O3 -std=c11 -fPIC` and platform library flags, bounded 60-second compile timeout, and no user-supplied flags. Start the compiler in an isolated process session/group on macOS/Linux. The build owner tracks that group; on timeout or exception/cancellation it terminates and reaps the group with bounded TERM then KILL cleanup (at most 2 seconds each) before deleting its directory. No automatic retries. The compiler is trusted not to detach descendants from its owned group; this is lifecycle ownership, not hostile-process containment. Compiler executable may be explicitly selected as an executable path; it is trusted. No eval, arbitrary code nodes, native imports, or dynamic opcode plugins.
+## Practical acceptance and comparison
 
-Each build owns a fresh private temporary directory, writes generated source there, compiles there, and loads a library only after compiler exit success. Any validation/build/load failure removes its directory and returns a structured error; no library cache, public runnable output, partial artifact publication, or reused stale build exists. Successful context cleanup releases host references and removes its directory. Dynamic library unloading is platform-managed; callers must not retain raw function handles. It is not a native sandbox. OS/process cancellation may leave OS temporary remnants; do not claim SIGKILL cleanup.
-
-`mairg/cli.py` owns transport only. Commands: `check`, `plan`, `emit`, `run`, `patch`; `python -m mairg` is supported. `run` accepts a graph and a JSONL data file (`-` for stdin), and `--engine native|reference`. Success emits one JSON result; failure emits structured JSON to stderr and exits 2. Other than `emit` (C text), successful machine-facing commands emit JSON. All outputs are buffered until complete success. No HTTP service or UI in this release.
-
-## Application and comparison
-
-Telemetry application graph uses inputs `status:u64`, `latency_us:u64`, `bytes:u64`, `cached:bool`. Outputs: total requests, status>=500 errors, latency_us>=1000 slow requests, total bytes, error bytes, maximum latency, and weighted score sum `(latency_us*3 + bytes)` modulo 2^64. Use multiple related outputs and include deliberate redundant/dead valid nodes to demonstrate optimizer work. Also provide at least two other workloads: simple reduction and selective filtering. The host does not encode telemetry formulas.
-
-Primary baseline: independent hand-written fused C++17 kernel, same ABI/data layout, unsigned semantics, outputs, compiler family, `-O3`, single thread, and hardware. A Python version is secondary. Benchmarks check exact output agreement before measuring; alternate/interleave order with warmups and repeated raw samples; consume results. Record kernel timings on prepared identical buffers separately from fresh CLI end-to-end runs including JSONL parsing/validation/serialization, using the same host parsing/validation path for MAIRG and C++. Separate cold build-inclusive runs from already-built kernel timings. Publish exact commands, compiler flags, dataset seeds, warmup/repetition counts, and hardware/software metadata. Report build times, library size, whole-process peak RSS with platform units (not kernel allocation or a per-language memory claim), and source sizes/descriptive structural metrics. No claimed model-token/productivity benefit without controlled trials; serialized bytes are not token counts. Strong native-baseline parity is acceptable; >25% median regression on large workloads requires investigation and honest reporting, not manipulated inputs or flags.
-
-## Acceptance
-
-All operation/reduction semantics; malformed/dead/cyclic graphs; type and boundary data; overflow/empty/filter boundaries; source reorder/ID rename/canonical fingerprint; patch atomicity/stale base; native/reference/random graph differential tests; build failure/cleanup/closed runtime; code injection resistance; CLI app real workflows; independent baseline equality; reproducible raw benchmark results; package install/smoke; CI on Linux and macOS. No completion claim based on only a generated loop or a Python speedup.
-
-## Prior art
-
-- LLVM: https://llvm.org/docs/LangRef.html
-- MLIR: https://mlir.llvm.org/docs/Rationale/Rationale/
-- Halide algorithm/schedule separation: https://halide-lang.org/
-- Weld analytics optimization: https://github.com/weld-project/weld
-- Substrait typed serialized plans: https://substrait.io/spec/specification/
-- ctypes semantics: https://docs.python.org/3/library/ctypes.html
-- Benchmarking bias: https://llvm.org/docs/Benchmarking.html
-
-Graph IR, fusion, and CSE are established. MAIRG's proposed contribution is their integration with precise agent-facing editing/diagnostics and reproducible evaluation. AI productivity advantage remains unproven until measured.
+1. One graph-defined inventory/reservation API, with CLI init/list helpers: custom schema and string validation; CRUD; atomic stock decrement+reservation insert; insufficient-stock outcome; rollback after later failure; parameter data with quotes; two concurrent reservations cannot oversell; restart preserves confirmed data. Actual Waitress HTTP and built artifact both exercised. App schema.json and migrations/001.json contain SQL-statement arrays; canonical schema is schema.json. Apply real migration to local fixture DB and prove live schema/master equivalence. Initial migration/master equivalence, existing version1 rows across restart, failed initialization rollback, and explicit rejection of unsupported/newer schema versions are required. Do not invent a version2 migration for a POC that has no historical app schema. No framework schema or hidden initializer.
+2. A fresh test agent authors a different useful CLI application after source/reference freeze, using documented graph operations and init/build tooling only. No runtime edit or business-logic Python adapter. It processes real files and runs its built artifact outside checkout. A capability gap is a POC failure to fix at its owner.
+3. Compare the complete API/CLI behavior with equivalent Python using the same Waitress/SQLite/file semantics and inputs. Record equality, rollback/restart, startup/readiness, whole-app request/CLI latency, build size/time and honest overhead. No microbenchmark or unmeasured AI-productivity claim replaces useful app proof.

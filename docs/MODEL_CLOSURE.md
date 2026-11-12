@@ -1,82 +1,84 @@
 # MODEL CLOSURE
 
-Artifact ID: **MAIRG-M2**. Model revision: **2**. Status: all three requested reviewers approved exact MAIRG-M2; **MODEL_GATE: PASS** before first runtime edit.
+Artifact ID: **MAIRG-M4**. Model revision: **4**. **MODEL_GATE: PASS** all three new reviewers approved exact MAIRG-M4 before runtime edits. Exact canonical contract: docs/SPEC.md; POC_SPEC.md is a pointer, not a second definition.
 
-Risk triggers: new public language contract; producer/typechecker/optimizer/native consumer boundaries; compiler subprocess and temporary-artifact lifecycle; structured edits; independent reviews. Revision 2 evidence: M1 serialization omitted Node.type and count.value, so an inconsistent manually constructed object could be silently normalized. checked_program now compares all original nonserialized metadata to the validated reconstruction and rejects mismatches; all M1 approvals are superseded. Revision 1 evidence: M0 reviewers demonstrated that frozen dataclasses admit invalid values, so public consumers must revalidate through ir.py; a compiler-like driver timeout left a spawned child running, so build cleanup must own its process group. Canonical JSON bytes and whole-process measurement labels are now explicit. All M0 approvals are superseded. Root failure class: an underspecified machine-authored program crosses an ownership boundary and executes a different or unvalidated meaning.
+Revision4 evidence: M3 reviewer directly proved generic file replacement can target the configured SQLite file and make legal topological orders disagree; state files/DBs now have disjoint canonical subtrees. Another reviewer showed permitted app Content-Length truncates JSON in actual Waitress and hop-by-hop headers assert; web.py now owns all framing. All M3 approvals superseded. New invalidating evidence: user rejected the numeric-worker-only product, then explicitly narrowed immediate work to a practical proof of concept. Previous M0/M1/M2/M3 approvals are superseded. Revision chain remains0->1->2->3->4, never reset.
 
-The exact specification reviewed with this model is `docs/SPEC.md` in the same revision. Changes to an owner, identity, invariant, scenario, sequence, atomicity, cleanup, or risk boundary require the next model revision/ID and invalidate affected approvals.
+## Goal, scope, risk
 
-## Canonical owners and invariants
+A practical machine-authored application POC: rich JSON, reusable functions, control/collections, explicit effects, actual SQLite transactions, files, project tools, a useful persistent HTTP/CLI app, directory distribution, and a fresh independently authored second app. Full ecosystem/production platform/native optimization is deferred under the latest user instruction. No source order, meaningful internal names, classes, handwritten loops, or schedules are required.
 
-| Owner | Invariant |
-|---|---|
-| ir.py registry/typechecker | One exact contract; public consumers revalidate even manually constructed Program objects; validate all nodes before pruning; no implicit casts, aliases, unknown fields, duplicate JSON keys, missing refs, cycles, or unsupported opcodes |
-| optimizer.py | Typed total graph meaning preserved; exact-key CSE, lawful constant folds, dead removal after validation; identity independent of declaration order/opaque IDs |
-| patch.py | Source revision is distinct from plan fingerprint; stale/invalid edits return no transformed graph or file mutation |
-| interpreter.py boundary | Whole batch exactly matches input schema and strict scalar types; same-length columns; reject before native execution |
-| interpreter.py oracle | Independent numerical evaluation of original validated graph, explicit u64 masking |
-| native.py build | Only fixed C templates; no names as code, no shell, no stale artifacts; owned subprocess group cleaned on failure; success only after completed compile and successful load |
-| native.py runtime | Buffers pinned and schema checked; fresh output; closed owner rejects use; cleanup bounded; synchronous lifecycle |
-| cli.py | Host handles transport, not telemetry business logic; no result until full success |
-| benchmarks/ | Strong independent C++ baseline; same semantics/inputs/flags; correctness before timing; measured evidence distinguished from hypotheses |
+Triggers: new/removed public format; producer/compiler/runtime/host boundaries; state, asynchronous server/concurrent requests, SQL/file effects, artifact publication, reviews. Root failure class: a graph crosses an ownership boundary with unvalidated meaning or incorrectly confirmed side effects.
+
+## Owners and invariants
+
+- language.py: one exact source/type/op/host catalog; all functions/dead nodes checked; raw caller documents validated; no implicit casts, aliases, old format, or forged-IR trust.
+- compiler.py: fixed AST/literals; one assignment/live node/frame; eager dependencies, lazy called branches; causal edges own write order; no duplicated/dead effects or partial-op rewrites.
+- runtime.py: fresh arguments/constants/results/frames and shared root budget; actual schemas checked; failure aborts frame; no automatic retries or global rollback.
+- hosts.py DB: explicit canonical resource; real readonly authorizer; parameterized values; actual BEGIN/commit/rollback; DB-only region; no confirmed result before commit, no nested/cross-resource transaction.
+- hosts.py files: explicit state-root identity; bounded exact input; private temp+fsync+replace; no false partial success or unknown-outcome replay.
+- app source: business logic, table/schema/init/startup/version ownership. No domain/route/formula shortcut in runtime.
+- web.py: WSGI/Waitress transport with sole framing/header ownership; source handlers; malformed input before effects; independent requests; startup before readiness; no replay.
+- project.py: fresh project/test/patch workflows; immutable assets separate from state; complete staged artifact; no overwrite/source fallback.
+- validation/comparison: independently authored useful app without runtime edits; full app equality/persistence before timing; equivalent Python semantics, honest overhead.
 
 ## Scenarios: start -> action -> owner -> consumer/side effect -> failure/cleanup
 
-1. Valid source -> loads -> full type/graph validation -> canonical plan -> native build -> valid batch -> exact outputs; context removes owned directory.
-2. Shuffled declarations/renamed opaque IDs -> same validation -> optimizer canonicalizes -> same fingerprint/native behavior; no source-order semantics.
-3. Missing/malformed/duplicated/replaced/unknown source, excessive JSON nesting, forged Program objects, including unreachable cycles -> validator rejects -> no optimizer/build/native effects.
-4. u64 overflow/underflow, empty/all/none-selected rows, threshold boundaries -> total modular operations and reduction identities -> interpreter/native/C++ agree exactly.
-5. Valid source plus dead/duplicated/literal-only graph -> validate all first -> optimizer removes/folds/interns -> one fused traversal, unchanged outputs.
-6. Missing/extra/null/wrong-type/unequal columns or invalid later record -> boundary rejects entire invocation -> native not called; no partial aggregates.
-7. Current source -> patch with matching source revision -> fresh document edited fully -> complete validation -> return replacement source only. Stale base, overlapping edits, removed live reference, malformed replacement -> reject, original unchanged, no stdout/source mutation.
-8. Compiler missing/nonzero/exception/timeout or load failure -> isolated compiler group is terminated/reaped with bounded TERM/KILL cleanup before directory removal -> structured error, no published library. Trusted compiler descendants stay in the group. Cancellation leaves no authoritative public state; SIGKILL cleanup is not guaranteed.
-9. Successful compile -> batch prepare pins buffers/schema -> repeat calls produce fresh equal outputs. Different-schema batch, close then run/prepare -> reject. Concurrent close/use and raw ABI misuse are explicitly outside synchronous public contract.
-10. Hostile external names/literals -> source validator and fixed positional C template -> names cannot become source or shell instructions; no arbitrary native code capability.
-11. Successful native/reference outputs -> independent traditional kernel verifies equality -> interleaved timings and raw metadata -> publish only measured conclusions. Mismatch blocks timing conclusions; slow result is evidence, not hidden.
-12. Process failure before/during/after CLI transport -> no durable data writes or network side effects in this release. stdout emitted only after success; process termination during OS write can truncate transport and is not an atomic filesystem publication guarantee.
+1. New/custom source -> full structural/signature/effect check -> fixed AST -> typed invocation/result. No app effects during check/describe/build smoke. Failure may leave completed unordered effects; only declared causal edges constrain partial outcomes.
+2. Shuffled/renamed declarations -> same causal graph -> same successful behavior/effects; diagnostic IDs/generated bytes can change. Independent error precedence unspecified.
+3. Malformed/unknown/dead cyclic source, stale patch, removed format -> validator rejects -> no application effects. Patch uses fresh documents; files unchanged.
+4. Shared producer -> one assignment/frame; choose runs selected function only; attempt calls target once. Failed frame aborts; separate call nodes are distinct invocations, never implicit replay.
+5. Missing/wrong value -> structured fn/node error; no coercion. Copied arguments/constants/results cannot leak mutable state to another request.
+6. Recursion/callbacks -> inherited step/depth/value budget -> resource error propagates; attempt cannot reset budget or hide cancellation.
+7. Conflicting same-domain effects -> dependency path required or compile rejection. Binding labels cannot evade resource identity. Pure map/filter; ordered effectful fold.
+8. DB-only region -> connection+BEGIN IMMEDIATE -> source callback -> checked return -> actual commit -> confirmed result. SQL/schema/runtime/budget/cancel failure -> rollback+close. Unknown commit never replayed or called rolled back without confirmation. Nested/foreign effects reject.
+9. Standalone execute -> owner transaction -> checked rows/changes then commit. Query authorizer denies writes/DDL/transaction/ATTACH, including INSERT RETURNING. SQL values never interpolate.
+10. DB commit -> later file/response error -> DB remains confirmed. No cross-resource rollback promise; app owns reporting.
+11. File temp failure -> old file preserved/temp cleaned. Replace then durability error -> unknown outcome, no false success/retry. State root never falls back to checkout; file and database subtrees cannot overlap or alias.
+12. Bad HTTP JSON/size -> rejection before handler/DB. Valid request -> new invocation -> checked response; app framing/hop headers reject and byte length is host-derived before start_response. Disconnect does not replay. Concurrent requests have independent frames/connections; SQLite serializes transactions.
+13. Source startup checks DB -> readiness only after success; unsupported/newer schema fails. Restart same explicit state preserves committed data.
+14. Build -> private stage/output lock -> generated module/runtime/Waitress/assets/digests -> import/describe smoke -> atomic publish to unused output. Failure/cancel cleans own resources; existing output untouched. SIGKILL residue not claimed cleaned.
+15. Fresh external author -> different useful app -> documented check/test/run/build outside checkout without runtime edits. A gap is a POC defect, not permission to narrow the test.
+16. Equivalent Python full app -> exact function/rollback/restart equality -> realistic whole-app timings/artifact evidence. No favorable microbenchmark proxy or unmeasured AI productivity claim.
 
-No account/session/role state, retained database data, external service mutations, retries/replay, distributed ordering, or multi-owner durable commit occurs. Retry may only repeat pure compilation/computation; no automatic retry is needed. No cache fallback or rollback source exists. Patch failure rollback is discarding the fresh in-memory document.
+## Direct evidence
 
-## Direct evidence and dependency semantics
+Actual Python3.14.7/SQLite3.53.4 probe: explicit isolation_level=None, BEGIN IMMEDIATE, insert+rollback yielded zero rows. Actual authorizer allowed SELECT and denied INSERT RETURNING/COMMIT; implementation must test full PRAGMA/DDL cases. Actual Waitress3.0.2 bound a unique loopback port; server.close()+task_dispatcher.shutdown(timeout=2) left no worker threads. Existing HTTP protocol ecosystem is reused. Waitress3.0.2 task.py directly trusts application Content-Length/truncates body and rejects hop-by-hop headers; host framing validation is therefore mandatory: https://github.com/Pylons/waitress/blob/v3.0.2/src/waitress/task.py .
 
-- Actual host probes: Python 3.14.7; Apple Clang 17 targeting arm64 macOS; compiler successfully built a uint64_t shared-library function. Actual ctypes call `(2^64-1)+1` returned 0. Pointer width 8 bytes. No Rust toolchain installed; Python+C removes that dependency.
-- LLVM/MLIR docs describe existing typed IR and lowering, so no claim that machine IR/fusion is novel.
-- Halide docs describe separate algorithm/schedule representation and native compilation, supporting scoped choice.
-- Python ctypes docs describe ABI-compatible calls and explicit native-memory risks. This is a trusted generated-kernel integration, not a sandbox.
-- Clang/GCC standard unsigned arithmetic and actual wrap probe support modular semantics; sanitizer tests will verify generated code against selected boundaries.
-- Fresh private temporary directory plus checked subprocess completion avoids partial/stale public artifacts; failure paths will be injected in native tests before completion.
+Python AST and SQLite owning docs: https://docs.python.org/3/library/ast.html and https://docs.python.org/3/library/sqlite3.html . Fixed AST compiles to code objects; wrappers/defaults are not proof of transaction semantics.
 
-## Exact edit/mutation sequence
+GitHub release list returned[]; source commits only, no released application binary/client. Repo scan found no app SQLite files. Existing numeric examples are authored fixtures, not production app state.
 
-1. Author planning/spec/model documents only; three NEW reviewers falsify this exact artifact/spec (8-minute bounded batch; M1 and M2 correction reviews bounded to 4 minutes each with the same reviewers).
-2. Consolidate model findings; revise ID/revision when material; gather exact approvals. No runtime edits until gate passes.
-3. Build canonical immutable IR/validator/optimizer/patch; native/runtime/oracle; CLI/application/benchmarks in disjoint ownership lanes. No compatibility code or legacy migrations exist.
-4. Integrate; run baseline smoke and operation checks. Commission three NEW independent testers with this same approved model.
-5. Consolidate implementation defects into one correction pass; revise model only for evidenced model defects; rerun affected checks.
-6. Run app, native/reference/C++ comparisons, raw benchmark/report generation, package smoke and CI. Commit/push reviewed deliverables to a new GitHub repository; no service deployment.
+## Temporal matrices and blast radius
 
-## Temporal initial-state matrices and blast radius
-
-| Retained shape | Count | Producer output | Consumer verdict |
-|---|---:|---|---|
-| Existing MAIRG persisted projects | 0; new isolated repository | none | No historical transformation |
-
-| Active version | Frozen parser/release | Current output acceptance |
+| Retained state | Count/evidence | Final producer/consumer verdict |
 |---|---|---|
-| None | No prior binary or release | Initial contract only |
+| mairg-1 numeric fixture programs |3 authored repo examples | Intentionally removed experimental format; explicit reject, no conversion/second runtime |
+| Historical app project/state |0; no app DB files/releases | Initial POC contract |
+| Empty DB |fresh test fixture | Explicit app init migration creates canonical version1 schema |
+| version1 records incl Unicode/quotes/boundaries |app acceptance fixtures to populate and inspect | Complete current query/JSON output accepts valid data; restart retains it |
+| Unsupported/newer/wrong DB schema |rejection fixtures | Source startup rejects before traffic; no normalization/reset |
 
-Initial owner scan: project is empty except these docs. Future op/reduction allowlists originate in ir.py, other dispatch implementations are mechanically tested for full coverage. Invalid graph rejects the whole program; invalid record rejects the whole invocation, never silently drops an item. No paginated aggregate exists.
+| Active released binary | Frozen contract/source | Acceptance |
+|---|---|---|
+| None; release list empty | Previous source-only0.1 numeric experiment, no distributed app binary | New0.2 POC/new explicit app format; no old alias or active-client deactivation |
 
-## Falsification cases
+Canonical allowlists: language.py only, dispatch coverage mechanically checked. App schema.json owns desired schema; migrations/001.json must yield an equivalent actual SQLite schema. Apply locally and inspect metadata/rows. Do not invent a version2 migration for an app that never had history.
 
-- Put a cycle or malformed node in an unreachable subgraph. Removing it before validation violates owner contract.
-- Let native `MAX+1` disagree with reference mask: modular invariant is false.
-- Rename/reorder graph IDs and get a different canonical plan: program identity owner is wrong.
-- Keep a stale patch base that matches optimized semantics but not source revision: conflated identities would allow it; contract must reject.
-- Directly construct an invalid frozen Node/Program and call every public consumer: all must reject through the canonical validator.
-- Make a compiler driver time out with an ordinary spawned child: bounded cleanup must stop both.
-- Make codegen interpolate an output name containing C/shell syntax: violates fixed-template boundary.
-- Have an invalid last row call native or produce partial results: violates whole-batch boundary.
-- Compare native output only with Python and claim language speed superiority: violates fair-evaluation owner.
+Invalid program item rejects whole program; invalid HTTP input rejects its request before effects; invalid runtime item aborts call/transaction instead of dropping records. Map/filter failures abort collection results; explicit source attempt/choose handles errors. Old numeric programs are intentionally removed by new format, never silently reinterpreted.
 
-Unresolved assumptions: **none in the proposed bounded contract**. AI generation efficiency and speed advantage are open experimental hypotheses, not correctness assumptions. Platform portability beyond macOS/Linux is not promised. Requested reviewer verdicts: semantics/identity **APPROVE MAIRG-M2**; native/lifecycle/security **APPROVE MAIRG-M2**; evaluation/product-scope **APPROVE MAIRG-M2**. M0: semantics COUNTEREXAMPLE (constructor provenance); native COUNTEREXAMPLE (constructor provenance/process group); evaluation APPROVE (superseded). M1: semantics COUNTEREXAMPLE (nonserialized metadata); native APPROVE and evaluation APPROVE (superseded).
+## Exact implementation/removal sequence
+
+1. Docs only: corrected POC spec/model/temporal proof; three NEW independent reviewers, initial6-minute batch and3-minute M4 correction check, exact MAIRG-M4 verdicts.
+2. Consolidate concrete model defects; material change increments ID/revision and invalidates approvals. No runtime edit before gate passes.
+3. Three NEW builders: language/compiler/runtime; hosts/WSGI; project/CLI/bundle/example. Root docs/integration/reference comparison. Remove numeric runtime/CLI/examples/tests/benchmarks, no compatibility dispatch; Git history preserves the experiment.
+4. Three NEW testers: semantics/effects; persistence/server/lifecycle; independent different app from public docs. Test/app files allowed, production-runtime edits root-owned.
+5. Prove real app/independent app, DB/schema/transaction/restart, outside-checkout artifact, then equivalent Python whole-app comparison. Publish explicitly as POC and verify relevant CI. No production deployment.
+
+No real user DB migration, account/payment/UI/mobile change occurs. Local DB gates cover authored schema/fixtures. Exact owned ports/processes only. Public POC publication authorized; production readiness not claimed.
+
+## Falsification
+
+A domain-specific runtime op needed for a new app; duplicate shared effect/unselected branch write; ID-based conflicting write order; INSERT RETURNING accepted as read; SQL COMMIT escaping owner; failed reservation leaving decremented stock; returned-constant mutation affecting next request; missing state_dir opening checkout DB; artifact copying user DB or requiring checkout; fresh author unable to build without runtime change. Any is a concrete disconfirming case.
+
+Unresolved assumptions: none in proposed bounded semantics. Utility/overhead remain experiments to execute, not assumed outcomes. Reviewer verdicts: semantics/effects **APPROVE MAIRG-M4**; DB/host/lifecycle **APPROVE MAIRG-M4**; practical workflow/validation **APPROVE MAIRG-M4**. M3: semantics COUNTEREXAMPLE (resource-domain alias), hosts COUNTEREXAMPLE (response framing), practical APPROVE (all superseded). All previous approvals superseded.

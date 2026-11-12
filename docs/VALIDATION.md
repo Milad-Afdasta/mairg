@@ -1,57 +1,50 @@
-# Validation evidence
+# Practical POC validation
 
-Date: 2026-11-12. Initial language/toolchain version: 0.1.0. Approved model: MAIRG-M2.
-
-## Local gates
+Date 2026-11-12. Tool version 0.2.0. Current approved contract: MAIRG-M4. This is an experimental application POC, not production readiness.
 
 | Gate | Result |
 |---|---|
-| Three independent specification reviewers | All APPROVE MAIRG-M2 before runtime edits |
-| Three new builders | Complete in disjoint ownership lanes |
-| Three new independent test/debug agents | All TEST_RESULT PASS |
-| Full durable suite | **55 tests passed**, 23.610 seconds on the final masked lowering |
-| Package type checks | mypy: no issues in all eight package modules |
-| Lint | Ruff passes for package, tests, benchmarks, examples |
-| Python syntax compilation | compileall passes for package, tests, benchmarks, examples |
-| Native sanitizer execution | Actual emitted C passes AddressSanitizer and UndefinedBehaviorSanitizer |
-| Wheel/source distribution build | Both built successfully |
-| Clean wheel install | New isolated environment, outside checkout, actual wheel import confirmed |
-| Installed CLI | Native and reference engines both produce exact expected telemetry output |
-| Native failure/cleanup | Missing/nonzero/load/launch/timeout/cancellation cases pass; owned compiler descendants stopped |
-| Public GitHub CI | Configured for Linux/macOS and Python 3.11/3.14; checked after publication |
-| Official benchmark | Frozen-source run recorded separately in COMPARISON.md and raw JSON reports |
+| Three new specification reviewers | All APPROVE MAIRG-M4 before runtime edits |
+| Three new builders | Completed disjoint language, hosts, and tooling/application lanes |
+| Three new independent test/author agents | All PASS; 15 semantics, 8 persistence, 5 fresh-app tests |
+| Full local suite | 71 tests passed in 10.679s; final packaging notice checks also pass |
+| Type/lint/syntax | mypy passes nine package modules; Ruff/compileall pass |
+| Real persistent application | Graph-defined inventory CRUD and atomic reservations; HTTP/CLI |
+| DB/migration/master | Actual local schema/rows checked; version1 retained data/restart; wrong/newer schema refused |
+| Transaction/concurrency | Later failure rolls back both writes; simultaneous reservations cannot oversell |
+| Independent application | Graph-only release-note generator authored from public docs/tools, no runtime reading/edit |
+| Clean tool wheel | New/check/test/run/build passed outside checkout after wheel installation |
+| Clean application execution | Bare interpreter with no MAIRG runs generated artifact under -I |
+| Artifact content | Compiler/source fallback absent; runtime/Waitress notices and integrity metadata included |
+| Whole-app Python comparison | Functional smoke passed 15 HTTP cases, rollback and restart; official measurements separate |
+| GitHub CI | New application matrix pending publication; old numeric CI is not reused |
 
-The tested wheel is `/tmp/mairg-final-package/mairg-0.1.0-py3-none-any.whl`, SHA-256 `2e7e8bf3597bf6659ab37c9994e20ae8c78a345d6f723a6f7d7352b02952e96a`. Temporary wheel-install environments and native builds were cleaned; source and evidence remain.
+Tested wheel: `/tmp/mairg-poc-package/mairg-0.2.0-py3-none-any.whl`, SHA-256 `46edea8932b74b2101033eae84443811cdcdfad8be0a51090801d017ed3c0438`.
 
 ## Commands
 
 ```sh
-python3 -m unittest discover -s tests -v
+.venv/bin/python -m unittest discover -s tests -v
 .venv/bin/mypy mairg
-.venv/bin/ruff check mairg tests benchmarks examples
-python3 -m compileall -q mairg benchmarks examples tests
-uv build --out-dir /tmp/mairg-final-package
+.venv/bin/ruff check mairg tests examples comparison
+.venv/bin/python -m compileall -q mairg examples comparison tests
+.venv/bin/python -m mairg test examples/inventory
+.venv/bin/python -m mairg test examples/changelog
+uv build --out-dir /tmp/mairg-poc-package
 ```
 
-The isolated-wheel smoke installed the wheel into a fresh environment, removed inherited Python path overrides, changed working directory outside the checkout, verified the imported module came from that environment, and ran the installed `mairg` executable with both engines against examples/expected.json.
+## Practical and failure evidence
 
-## Integration evidence
+Inventory source owns its schema, SQL, validation, statuses, startup checks and transaction boundaries. No table/route/domain operations exist in runtime dispatch. `schema.json` and `migrations/001.json` produce equal actual SQLite schema. Runtime DB state is under explicit STATE_DIR/db; generic files are under disjoint STATE_DIR/files. No initialized user database is packaged.
 
-- The telemetry application produces total_requests=4, errors=2, slow_requests=2, total_bytes=6400, error_bytes=5000, max_latency=5000, weighted_score=27697 on the supplied example.
-- Its 18-node source optimizes to 11 nodes: one constant fold, two merged nodes, three dead nodes. Generated code has one row traversal and no intermediate column arrays.
-- All 18 scalar operations and four reductions have direct catalog coverage, including bool overloads and unsigned boundaries.
-- Independent source/mathematical oracles, optimized/unoptimized interpretation/native code, and independent handwritten C++ agree.
-- 32 seeded randomized native cases, 500 durable canonicalization trials, and another 1,000 exploratory ID/order trials passed.
-- Invalid unreachable state, excessive depth/nesting, bad final records, forged object metadata, stale patches, schema mismatches, and closed runtimes reject at their owners.
-- Native code contains positional identities and compiler-generated names; external names never become code or shell instructions.
-- Public compiled execution is synchronous. Trusted raw ctypes integration is explicitly outside the safety boundary. Native sandboxing is not claimed.
+Independent tests inspect real SQLite after successful/failed/concurrent calls, restart source and built services, and reject unsupported schemas before socket readiness. Framing tests perform a committed write followed by invalid response construction and prove the commit remains exactly once; disconnect never replays a handler. HTTP response headers and UTF-8 length are transport-owned.
 
-## Residual limits and adjacent work
+Release-note generation proves independently authored non-DB software: quoted/multiline/Unicode CSV; normalization; explicit category/issue/title/version checks; stable grouping/duplicates; Markdown escaping; single atomic publication. Bad later rows preserve previous bytes. Source changes and rebuild alter the result without runtime changes.
 
-- This is a deliberately bounded `u64`/`bool` batch-worker language, not a general-purpose app platform.
-- JSON/opcode authoring efficiency, model repair success, and token cost remain unmeasured; controlled held-out model trials are the next product experiment.
-- A measured gain over one C++ implementation does not imply an inherent language advantage; the primary native comparison includes hand-tuned C++.
-- Local performance is hardware/compiler/workload-specific. Cold end-to-end runs include the common Python host and compilation. Whole-process RSS is not per-kernel allocation.
-- The native compiler is trusted, concurrent close/use is unsupported, SIGKILL cleanup cannot be guaranteed, and OS library mappings may outlive context cleanup.
-- No UI, database, mobile runtime, credentials, payments, or production service was changed. Their gates do not apply.
-- Instruction improvement classification: execution miss for the design/implementation assumptions identified during review/testing. Existing rules already required the missing reasoning. Enforcement is in owner code, invariant tests, independent review, and benchmark evidence; no instruction edit was warranted. See INSTRUCTION_REVIEW.md.
+## Limits
+
+The current Python-hosted graph runtime is not expected to be faster merely because authoring uses graphs. Report actual whole-app overhead. AI token efficiency, generation/repair success and maintenance advantages remain unmeasured. Multi-module imports, arbitrary libraries, outgoing HTTP, production/security/deployment frameworks and native code optimization are deferred.
+
+There is no sandbox, exactly-once effect guarantee across crashes, global rollback, forced Python-thread termination, or guaranteed rollback after unknown commit outcomes. These limits are explicit, not hidden retries/fallbacks. This work changed no real user/production database, account/payment, UI, or mobile path.
+
+Instruction improvement classification is execution miss: prior scope validation and public metadata snapshotting were required by existing owner/falsification instructions. Practical independent-app gates and invariant regressions enforce them; no instruction edit was warranted.

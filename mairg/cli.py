@@ -1,100 +1,89 @@
-"""Machine-facing transport for MAIRG. Application formulas stay in graph files."""
+"""Structured JSON command transport for practical application graphs."""
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, NoReturn
 
-from .interpreter import interpret, records_to_columns
-from .ir import MairgError, decode_json, load, source_revision, to_document
-from .native import compile_program
-from .optimizer import optimize
-from .patch import apply_patch
+from .language import AppError, decode_json, encode_json
 
 
 class _Parser(argparse.ArgumentParser):
     def error(self, message: str) -> NoReturn:
-        raise MairgError("cli", message, "arguments")
-
-
-def read_json(text: str, path: str) -> Any:
-    """Decode a transport JSON value without duplicate keys or non-JSON numbers."""
-    try:
-        return decode_json(text)
-    except MairgError as exc:
-        raise MairgError(exc.code, exc.message, path) from exc
-
-
-def read_records(path: str) -> list[Any]:
-    """The shared CLI/benchmark JSONL parser; no bad records are silently dropped."""
-    try:
-        if path == "-":
-            lines = sys.stdin.read().splitlines()
-        else:
-            lines = Path(path).read_text(encoding="utf-8").splitlines()
-    except (OSError, UnicodeError) as exc:
-        raise MairgError("io", str(exc), path) from exc
-    return [read_json(line, f"{path}:{index}") for index, line in enumerate(lines, 1)]
+        raise AppError("arguments", message)
 
 
 def parser() -> argparse.ArgumentParser:
-    result = _Parser(prog="mairg", description="Machine-authored reduction graphs")
+    result = _Parser(prog="mairg", description="Machine-authored application graphs (practical POC)")
     sub = result.add_subparsers(dest="command", required=True, parser_class=_Parser)
-    for name in ("check", "plan", "emit"):
+    new = sub.add_parser("new")
+    new.add_argument("directory")
+    new.add_argument("--template", choices=("cli", "api"), default="cli")
+    for name in ("describe", "check", "test"):
         command = sub.add_parser(name)
-        command.add_argument("graph")
+        command.add_argument("project")
     run = sub.add_parser("run")
-    run.add_argument("graph")
-    run.add_argument("data", help="JSONL file, or - for stdin")
-    run.add_argument("--engine", choices=("native", "reference"), default="native")
+    run.add_argument("project")
+    run.add_argument("export")
+    run.add_argument("--args", required=True)
+    run.add_argument("--state-dir")
+    serve = sub.add_parser("serve")
+    serve.add_argument("project")
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8000)
+    serve.add_argument("--state-dir", required=True)
+    build = sub.add_parser("build")
+    build.add_argument("project")
+    build.add_argument("--output", required=True)
     patch = sub.add_parser("patch")
-    patch.add_argument("graph")
-    patch.add_argument("patch", help="JSON patch file, or - for stdin")
+    patch.add_argument("project")
+    patch.add_argument("patchfile")
     return result
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     try:
         args = parser().parse_args(argv)
-        program = load(args.graph)
+        from .project import build_project, new_project, patch_project, test_project
         output: Any
-        if args.command == "check":
-            output = {"valid": True, "source_revision": source_revision(program),
-                      "inputs": len(program.inputs), "nodes": len(program.nodes),
-                      "outputs": len(program.outputs)}
-        elif args.command == "plan":
-            plan = optimize(program)
-            output = {"source_revision": source_revision(program), "fingerprint": plan.fingerprint,
-                      "stats": plan.stats, "program": to_document(plan.program)}
-        elif args.command == "emit":
-            from .native import emit_c
-            # Emission is buffered and the source is validated before stdout is touched.
-            text = emit_c(optimize(program).program)
-            sys.stdout.write(text)
-            return 0
-        elif args.command == "patch":
-            text = sys.stdin.read() if args.patch == "-" else Path(args.patch).read_text(encoding="utf-8")
-            patch_value = read_json(text, args.patch)
-            output = to_document(apply_patch(program, patch_value))
+        if args.command == "new":
+            output = new_project(args.directory, args.template)
         else:
-            columns = records_to_columns(program, read_records(args.data))
-            if args.engine == "reference":
-                output = interpret(program, columns)
+            from .compiler import compile_project
+            project = compile_project(args.project)
+            if args.command == "describe":
+                output = project.describe()
+            elif args.command == "check":
+                output = {"valid": True, "source_revision": project.source_revision}
+            elif args.command == "run":
+                arguments = decode_json(args.args)
+                if not isinstance(arguments, list):
+                    raise AppError("arguments", "Run arguments must be a JSON array")
+                output = project.call(args.export, arguments, state_dir=args.state_dir)
+            elif args.command == "serve":
+                from .web import serve_project
+                serve_project(project, args.host, args.port, state_dir=args.state_dir)
+                return 0
+            elif args.command == "test":
+                output = test_project(project)
+                if not output["success"]:
+                    raise AppError("tests_failed", "Project fixture failed", details=output)
+            elif args.command == "build":
+                output = build_project(project, args.output)
             else:
-                with compile_program(program) as compiled:
-                    output = compiled.run(columns)
-        rendered = json.dumps(output, ensure_ascii=True, allow_nan=False, separators=(",", ":"))
-        sys.stdout.write(rendered + "\n")
+                text = sys.stdin.read() if args.patchfile == "-" else Path(args.patchfile).read_text(encoding="utf-8")
+                output = patch_project(project, decode_json(text, max_bytes=1024 * 1024))
+        sys.stdout.write(encode_json(output) + "\n")
         return 0
-    except MairgError as exc:
-        sys.stderr.write(json.dumps(exc.as_dict(), ensure_ascii=True, allow_nan=False) + "\n")
+    except KeyboardInterrupt:
+        return 130
+    except AppError as error:
+        sys.stderr.write(encode_json(error.as_dict()) + "\n")
         return 2
-    except (OSError, UnicodeError) as exc:
-        error = MairgError("io", str(exc), "transport")
-        sys.stderr.write(json.dumps(error.as_dict(), ensure_ascii=True) + "\n")
+    except (OSError, UnicodeError, ValueError) as error:
+        sys.stderr.write(encode_json(AppError("io", str(error)).as_dict()) + "\n")
         return 2
 
 

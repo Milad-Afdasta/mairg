@@ -1,15 +1,13 @@
 # Specification review evidence
 
-Three new independent reviewers received the same MODEL_CLOSURE.md and SPEC.md. Initial window: 8 minutes; correction checks: 4 minutes each. Reviewers did not edit.
+Current artifact: MAIRG-M4 revision4. Three NEW reviewers read exact MODEL_CLOSURE.md and SPEC.md; no edits. Initial window6minutes; correction3minutes.
 
-| Revision | Semantics/identity | Native/lifecycle/security | Product/evaluation |
-|---|---|---|---|
-| MAIRG-M0 | COUNTEREXAMPLE: frozen constructors bypass validator | COUNTEREXAMPLE: constructor provenance and surviving compiler descendants | APPROVE |
-| MAIRG-M1 | COUNTEREXAMPLE: serialization drops Node.type/count.value | APPROVE | APPROVE |
-| MAIRG-M2 | APPROVE MAIRG-M2 | APPROVE MAIRG-M2 | APPROVE MAIRG-M2 |
+| Lens | M3 | M4 |
+|---|---|---|
+| Semantics/effects | COUNTEREXAMPLE: file host could overwrite DB path, invalidating effect domains | APPROVE MAIRG-M4 |
+| SQLite/host/lifecycle | COUNTEREXAMPLE: app framing headers could truncate JSON/assert in Waitress | APPROVE MAIRG-M4 |
+| Practical workflow/validation | APPROVE (superseded) | APPROVE MAIRG-M4 |
 
-M0 findings consolidated into sole-owner validation at every public consumer, exact canonical JSON bytes, process-group compiler ownership, explicit nesting rejection, and accurate evaluation labels. M1 finding consolidated into comparison of original nonserialized metadata with the validated reconstruction, rejecting mismatches. All earlier approvals were superseded by each material revision. Runtime code began only after all three M2 approvals.
+Correction: disjoint canonical state/files and state/db roots with alias rejection; sole HTTP framing ownership in web.py, forbidden application framing/hop headers, actual UTF-8 byte length and transport header checks. Failure/cleanup guarantees are explicit and do not promise forced Python-thread termination.
 
-Semantics reviewer falsified identity, modular arithmetic, batch atomicity, graph rejection, and patch behavior. Native reviewer used actual Python probes for frozen dataclass permissiveness and spawned-child survival after driver timeout. Root verified the full native ABI on actual Clang/ctypes with wraparound and empty input. Evaluation reviewer required the optimized independent C++ baseline, identical host parsing/prepared buffers, exact metadata, raw samples, and no unmeasured AI-productivity claims.
-
-All reviewers explicitly accepted a bounded domain-specific first release. Graph IR, CSE, fusion, and scheduling separation are prior art, not claimed inventions. The user's machine-first goal is carried by graph semantics and compiler-owned execution choices, while AI generation/repair efficiency remains an experimental hypothesis.
+Earlier M0-M2 numeric-only approvals were invalidated by the user's practical-use correction. Their runtime was removed; Git history preserves that experiment. No prior approval was reused to authorize application-runtime edits.
