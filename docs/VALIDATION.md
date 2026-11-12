@@ -9,7 +9,7 @@ Date: 2026-11-12. Initial language/toolchain version: 0.1.0. Approved model: MAI
 | Three independent specification reviewers | All APPROVE MAIRG-M2 before runtime edits |
 | Three new builders | Complete in disjoint ownership lanes |
 | Three new independent test/debug agents | All TEST_RESULT PASS |
-| Full durable suite | **55 tests passed**, 23.524 seconds on the final masked lowering |
+| Full durable suite | **55 tests passed**, 23.610 seconds on the final masked lowering |
 | Package type checks | mypy: no issues in all eight package modules |
 | Lint | Ruff passes for package, tests, benchmarks, examples |
 | Python syntax compilation | compileall passes for package, tests, benchmarks, examples |
@@ -21,7 +21,7 @@ Date: 2026-11-12. Initial language/toolchain version: 0.1.0. Approved model: MAI
 | Public GitHub CI | Configured for Linux/macOS and Python 3.11/3.14; checked after publication |
 | Official benchmark | Frozen-source run recorded separately in COMPARISON.md and raw JSON reports |
 
-The tested wheel is `/tmp/mairg-final-package/mairg-0.1.0-py3-none-any.whl`, SHA-256 `40f1faadce861e8e87659c2f3431d0491faa4c9c2dd6a0fbfb5444a5b7a5166d`. Temporary wheel-install environments and native builds were cleaned; source and evidence remain.
+The tested wheel is `/tmp/mairg-final-package/mairg-0.1.0-py3-none-any.whl`, SHA-256 `2e7e8bf3597bf6659ab37c9994e20ae8c78a345d6f723a6f7d7352b02952e96a`. Temporary wheel-install environments and native builds were cleaned; source and evidence remain.
 
 ## Commands
 

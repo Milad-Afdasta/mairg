@@ -102,7 +102,7 @@ class CppKernel:
             _, stderr = process.communicate(timeout=60)
             if process.returncode:
                 raise RuntimeError(f"C++ compilation failed: {stderr}")
-            self.build_seconds = time.perf_counter() - started
+            self.compiler_seconds = time.perf_counter() - started
             self.library = ctypes.CDLL(str(self.library_path))
             self.kernel = self.library.mairg_kernel
             self.kernel.argtypes = [ctypes.c_size_t, ctypes.POINTER(PTR), PTR]
@@ -279,12 +279,14 @@ def main(argv: list[str] | None = None) -> int:
                    "resource_comparison": "whole-process RSS recorded, per-language memory advantage not established"},
         "workloads": {}}
     for workload in args.workloads:
-        program = load(ROOT / "examples" / f"{workload}.mairg.json")
         started = time.perf_counter()
+        program = load(ROOT / "examples" / f"{workload}.mairg.json")
         with compile_program(program) as generated:
             total_build_seconds = time.perf_counter() - started
             cc_command = list(generated.compiler_command)
+            cpp_started = time.perf_counter()
             with CppKernel(workload, cc_command[0], style=args.cpp_style) as cpp:
+                cpp_total_seconds = time.perf_counter() - cpp_started
                 report["workloads"][workload] = {
                     "graph": str(ROOT / "examples" / f"{workload}.mairg.json"),
                     "provenance": {
@@ -295,8 +297,11 @@ def main(argv: list[str] | None = None) -> int:
                         "cpp_library_sha256": hashlib.sha256(cpp.library_path.read_bytes()).hexdigest()},
                     "plan_fingerprint": generated.plan.fingerprint, "optimization": generated.plan.stats,
                     "build": {"mairg_total_seconds": total_build_seconds,
-                              "mairg_native_compile_seconds": generated.build_seconds,
-                              "cpp_native_compile_seconds": cpp.build_seconds,
+                              "cpp_total_seconds": cpp_total_seconds,
+                              "mairg_native_compile_seconds": generated.compiler_seconds,
+                              "cpp_native_compile_seconds": cpp.compiler_seconds,
+                              "total_scope": "source read/validation/lowering as applicable, native compilation, library load, and ABI setup",
+                              "native_compile_scope": "compiler process launch through completed successful exit; excludes library loading",
                               "mairg_command": cc_command, "cpp_command": cpp.compiler_command,
                               "mairg_compiler": _version(cc_command[0]), "cpp_compiler": _version(cpp.compiler_command[0]),
                               "mairg_library_bytes": Path(generated.library_path).stat().st_size,

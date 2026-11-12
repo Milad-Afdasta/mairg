@@ -112,6 +112,7 @@ class CompiledProgram:
     def __init__(
         self, plan: Plan, source: str, directory: tempfile.TemporaryDirectory[str],
         library: Any, library_path: Path, command: list[str], build_seconds: float,
+        compiler_seconds: float,
     ) -> None:
         self.plan = plan
         self.source = source
@@ -120,6 +121,7 @@ class CompiledProgram:
         self.library_path = library_path
         self.compiler_command = tuple(command)
         self.build_seconds = build_seconds
+        self.compiler_seconds = compiler_seconds
         self._library = library
         self._closed = False
         self.kernel = library.mairg_kernel
@@ -229,6 +231,7 @@ def compile_program(
         platform_flag = "-dynamiclib" if sys.platform == "darwin" else "-shared"
         command = [executable, "-O3", "-std=c11", "-fPIC", platform_flag,
                    str(source_path), "-o", str(library_path)]
+        compiler_started = time.perf_counter()
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                    text=True, start_new_session=True)
         try:
@@ -237,10 +240,11 @@ def compile_program(
             raise MairgError("compiler_timeout", "native compiler timed out", "compiler") from error
         if process.returncode != 0:
             raise MairgError("compiler_failed", stderr[-4096:] or "native compiler failed", "compiler")
+        compiler_seconds = time.perf_counter() - compiler_started
         try:
             library = ctypes.CDLL(str(library_path))
             result = CompiledProgram(plan, source, temporary, library, library_path,
-                                     command, time.perf_counter() - started)
+                                     command, time.perf_counter() - started, compiler_seconds)
         except (OSError, AttributeError) as error:
             raise MairgError("library_load", "compiler output could not be loaded", "compiler") from error
         return result

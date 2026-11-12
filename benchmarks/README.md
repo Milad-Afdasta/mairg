@@ -16,4 +16,6 @@ End-to-end measurements launch a fresh Python process per sample and include the
 
 The report records compiler commands/versions, seeds, workload sizes, repetitions/warmups, host platform, Python version, source revision, dirty-tree state, generator/graph/generated-C/C++/library SHA-256 checksums, library sizes, build times, and whole-process peak RSS. RSS is the benchmark process's cumulative peak including input generation and the reference interpreter, in platform-specific units. It does not measure individual kernel allocation or establish a per-language memory advantage.
 
+Compiler-only timers run from process launch through successful exit for both backends. Separate total-build timers include source reading, validation/lowering where applicable, compilation, library loading, and ABI setup. Library loading is never included on only one side of a compiler-time comparison.
+
 Source bytes and explicit scheduling syntax are descriptive measures. They are not LLM token counts and do not establish an AI generation or repair advantage. Equal-budget, held-out model trials remain future work. Runtime parity with strong C++ is a useful result: MAIRG authors specify the dependency graph without writing traversal, fusion, temporary-buffer, or scheduling code.
