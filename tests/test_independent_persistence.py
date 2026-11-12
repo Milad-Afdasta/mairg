@@ -12,6 +12,7 @@ import signal
 import socket
 import sqlite3
 import subprocess
+import sys
 import tempfile
 import threading
 import unittest
@@ -25,7 +26,7 @@ from mairg.project import build_project
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "examples" / "inventory"
-PYTHON = str(ROOT / ".venv" / "bin" / "python")
+PYTHON = sys.executable
 
 
 @contextmanager
