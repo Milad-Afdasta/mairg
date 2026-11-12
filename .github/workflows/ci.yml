@@ -1,0 +1,23 @@
+name: validate
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ['3.11', '3.14']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -e . -r requirements-dev.txt
+      - run: python -m unittest discover -s tests -v
+      - run: python -m compileall -q mairg benchmarks
+      - run: mypy mairg
+      - run: ruff check mairg tests benchmarks
+      - run: python -m mairg check examples/telemetry.mairg.json
+      - run: python -m mairg run examples/telemetry.mairg.json examples/telemetry.jsonl

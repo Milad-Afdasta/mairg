@@ -1,0 +1,5 @@
+include LICENSE README.md requirements-dev.txt
+recursive-include docs *.md *.json
+recursive-include examples *.py *.json *.jsonl
+recursive-include benchmarks *.py *.cpp *.md
+recursive-include tests *.py

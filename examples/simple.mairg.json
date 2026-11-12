@@ -1,0 +1,41 @@
+{
+  "format": "mairg-1",
+  "inputs": [
+    [
+      "status",
+      "u64"
+    ],
+    [
+      "latency_us",
+      "u64"
+    ],
+    [
+      "bytes",
+      "u64"
+    ],
+    [
+      "cached",
+      "bool"
+    ]
+  ],
+  "nodes": [
+    [
+      0,
+      "input",
+      2
+    ],
+    [
+      1,
+      "bool",
+      true
+    ]
+  ],
+  "outputs": [
+    [
+      "total_bytes",
+      "sum",
+      0,
+      1
+    ]
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "total_requests": 4,
+  "errors": 2,
+  "slow_requests": 2,
+  "total_bytes": 6400,
+  "error_bytes": 5000,
+  "max_latency": 5000,
+  "weighted_score": 27697
+}
