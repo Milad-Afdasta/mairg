@@ -1,0 +1,439 @@
+{
+  "report_format": "mairg-benchmark-1",
+  "metadata": {
+    "git_commit": "1f37efaa9a3757bf79ab017d2221ff89db0093fa",
+    "git_dirty": false,
+    "dataset_generator_sha256": "55fc218e961b8cfc1b3e1e42fb33d3845770528d93d0e1760bbfdf2c6a6ddddf",
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 17.0.0 (clang-1700.6.4.2)]",
+    "platform": "macOS-15.6.1-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "cpu_count": 10,
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "benchmarks/run.py",
+      "--workloads",
+      "selective",
+      "--cpp-style",
+      "branching",
+      "--sizes",
+      "10000",
+      "100000",
+      "1000000",
+      "--repetitions",
+      "11",
+      "--warmups",
+      "3",
+      "--seed",
+      "17",
+      "--e2e-rows",
+      "10000",
+      "--e2e-repetitions",
+      "3",
+      "--output",
+      "/tmp/mairg-branching-final.json"
+    ],
+    "whole_process_peak_rss": 468844544,
+    "rss_unit": "bytes",
+    "rss_scope": "cumulative peak of benchmark host, including data generation/reference; not kernel allocations",
+    "clock": "time.perf_counter_ns",
+    "single_threaded_kernels": true
+  },
+  "cpp_baseline_style": "branching",
+  "claims": {
+    "native_comparison": "independent fused C++17 primary baseline",
+    "ai_productivity": "not measured",
+    "language_novelty": "graph IR, fusion and CSE are prior art",
+    "resource_comparison": "whole-process RSS recorded, per-language memory advantage not established"
+  },
+  "workloads": {
+    "selective": {
+      "graph": "/Users/null/work/mairg/examples/selective.mairg.json",
+      "provenance": {
+        "graph_sha256": "51ab3c1aab97d3a382241a58e6298bf4c7f9eb3e4208bc87d417260469f3d84e",
+        "generated_c_sha256": "90e9cf55a1d9f631f0a35efa0f9599d3f5c85e2548a158b625755bf515632fd2",
+        "cpp_source_sha256": "ed7ef15b617abdc71e595f7a88774800c724fe313c802cc3468a60fc79f09330",
+        "mairg_library_sha256": "28593ad3c4f5681de026e4699e59759f4d88359e6af1c93da1130f339e10ea57",
+        "cpp_library_sha256": "6eee08c449c357573063e61f105ba5b2cbec66d73876211f7eefa20f7eecfa75"
+      },
+      "plan_fingerprint": "20b0fd7b465a4fcd1aa02ee13f2eeeee194fd9d4543811186a75c1429b6cd457",
+      "optimization": {
+        "source_nodes": 7,
+        "live_nodes": 7,
+        "optimized_nodes": 7,
+        "folded_nodes": 0,
+        "merged_nodes": 0,
+        "dead_nodes": 0,
+        "row_passes": 1,
+        "intermediate_column_buffers": 0
+      },
+      "build": {
+        "mairg_total_seconds": 0.19253608398139477,
+        "cpp_total_seconds": 0.1831257080193609,
+        "mairg_native_compile_seconds": 0.0537184159620665,
+        "cpp_native_compile_seconds": 0.06687324994709343,
+        "total_scope": "source read/validation/lowering as applicable, native compilation, library load, and ABI setup",
+        "native_compile_scope": "compiler process launch through completed successful exit; excludes library loading",
+        "mairg_command": [
+          "/usr/bin/clang",
+          "-O3",
+          "-std=c11",
+          "-fPIC",
+          "-dynamiclib",
+          "/var/folders/zd/w2dkn8s50gb3yx69z04m7cv80000gn/T/mairg-build-b9_n2awo/kernel.c",
+          "-o",
+          "/var/folders/zd/w2dkn8s50gb3yx69z04m7cv80000gn/T/mairg-build-b9_n2awo/kernel.dylib"
+        ],
+        "cpp_command": [
+          "/usr/bin/clang++",
+          "-O3",
+          "-std=c++17",
+          "-fPIC",
+          "-dynamiclib",
+          "/Users/null/work/mairg/benchmarks/selective_branching.cpp",
+          "-o",
+          "/var/folders/zd/w2dkn8s50gb3yx69z04m7cv80000gn/T/mairg-cpp-hdxy29k1/baseline.dylib"
+        ],
+        "mairg_compiler": "Apple clang version 17.0.0 (clang-1700.3.19.1)",
+        "cpp_compiler": "Apple clang version 17.0.0 (clang-1700.3.19.1)",
+        "mairg_library_bytes": 16800,
+        "cpp_library_bytes": 16800
+      },
+      "authoring": {
+        "graph_serialized_bytes": 708,
+        "generated_c_bytes": 726,
+        "handwritten_cpp_bytes": 465,
+        "graph_explicit_loops": 0,
+        "graph_explicit_schedules": 0,
+        "note": "descriptive sizes and syntax counts; not tokens or AI productivity"
+      },
+      "kernel": [
+        {
+          "rows": 10000,
+          "seed": 17,
+          "outputs": {
+            "uncached_errors": 1246,
+            "uncached_error_bytes": 655889446
+          },
+          "correctness": "pass",
+          "warmups": 3,
+          "repetitions": 11,
+          "calls_per_sample": 770,
+          "kernel_ns_per_call": {
+            "mairg": {
+              "samples": [
+                4249.892207792208,
+                4238.474025974026,
+                4278.2467532467535,
+                4403.625974025974,
+                4299.405194805195,
+                4236.905194805195,
+                4255.41038961039,
+                4346.374025974026,
+                4370.183116883117,
+                4265.422077922078,
+                4249.133766233766
+              ],
+              "median": 4265.422077922078,
+              "min": 4236.905194805195,
+              "max": 4403.625974025974,
+              "mad": 26.948051948052125
+            },
+            "cpp": {
+              "samples": [
+                5157.62987012987,
+                5072.077922077922,
+                6702.11038961039,
+                5420.075324675325,
+                5056.871428571429,
+                5239.825974025974,
+                5067.37012987013,
+                5051.461038961039,
+                5162.337662337663,
+                5090.909090909091,
+                5147.942857142857
+              ],
+              "median": 5147.942857142857,
+              "min": 5051.461038961039,
+              "max": 6702.11038961039,
+              "mad": 80.5727272727272
+            }
+          },
+          "checksums": {
+            "mairg": [
+              655890692,
+              655890692,
+              655890692,
+              655890692,
+              655890692,
+              655890692,
+              655890692,
+              655890692,
+              655890692,
+              655890692,
+              655890692
+            ],
+            "cpp": [
+              655890692,
+              655890692,
+              655890692,
+              655890692,
+              655890692,
+              655890692,
+              655890692,
+              655890692,
+              655890692,
+              655890692,
+              655890692
+            ]
+          },
+          "mairg_over_cpp_ratio": 0.8285682643123617,
+          "cpp_over_mairg_speedup": 1.2069011607992388,
+          "regression_over_25_percent": false,
+          "timing_scope": "prepared identical buffers; direct ctypes ABI; excludes parsing, validation, builds and serialization"
+        },
+        {
+          "rows": 100000,
+          "seed": 17,
+          "outputs": {
+            "uncached_errors": 12616,
+            "uncached_error_bytes": 6660045919
+          },
+          "correctness": "pass",
+          "warmups": 3,
+          "repetitions": 11,
+          "calls_per_sample": 162,
+          "kernel_ns_per_call": {
+            "mairg": {
+              "samples": [
+                29551.438271604937,
+                29603.90740740741,
+                30235.85802469136,
+                30405.09259259259,
+                29597.222222222223,
+                29956.01851851852,
+                30409.722222222223,
+                29665.382716049382,
+                29621.14197530864,
+                29764.91975308642,
+                30549.382716049382
+              ],
+              "median": 29764.91975308642,
+              "min": 29551.438271604937,
+              "max": 30549.382716049382,
+              "mad": 191.09876543209975
+            },
+            "cpp": {
+              "samples": [
+                251972.9938271605,
+                233138.88888888888,
+                227276.74691358025,
+                234132.71604938273,
+                227757.71604938273,
+                232815.5864197531,
+                226407.40740740742,
+                230517.4938271605,
+                220729.93827160494,
+                221121.14197530865,
+                229983.54320987655
+              ],
+              "median": 229983.54320987655,
+              "min": 220729.93827160494,
+              "max": 251972.9938271605,
+              "mad": 3155.345679012331
+            }
+          },
+          "checksums": {
+            "mairg": [
+              6660058535,
+              6660058535,
+              6660058535,
+              6660058535,
+              6660058535,
+              6660058535,
+              6660058535,
+              6660058535,
+              6660058535,
+              6660058535,
+              6660058535
+            ],
+            "cpp": [
+              6660058535,
+              6660058535,
+              6660058535,
+              6660058535,
+              6660058535,
+              6660058535,
+              6660058535,
+              6660058535,
+              6660058535,
+              6660058535,
+              6660058535
+            ]
+          },
+          "mairg_over_cpp_ratio": 0.12942195488276215,
+          "cpp_over_mairg_speedup": 7.726664312139756,
+          "regression_over_25_percent": false,
+          "timing_scope": "prepared identical buffers; direct ctypes ABI; excludes parsing, validation, builds and serialization"
+        },
+        {
+          "rows": 1000000,
+          "seed": 17,
+          "outputs": {
+            "uncached_errors": 125140,
+            "uncached_error_bytes": 65657154512
+          },
+          "correctness": "pass",
+          "warmups": 3,
+          "repetitions": 11,
+          "calls_per_sample": 13,
+          "kernel_ns_per_call": {
+            "mairg": {
+              "samples": [
+                400839.76923076925,
+                436096.1538461539,
+                402301.3076923077,
+                394234.0,
+                396051.3076923077,
+                389288.46153846156,
+                424875.0,
+                444371.76923076925,
+                393285.3076923077,
+                402240.3846153846,
+                396621.8461538461
+              ],
+              "median": 400839.76923076925,
+              "min": 389288.46153846156,
+              "max": 444371.76923076925,
+              "mad": 6605.769230769249
+            },
+            "cpp": {
+              "samples": [
+                2593641.0,
+                2595359.0,
+                2610000.0,
+                2636644.230769231,
+                2599032.0,
+                2597685.923076923,
+                2591932.6923076925,
+                2607945.5384615385,
+                2607724.3076923075,
+                2598528.846153846,
+                2592419.923076923
+              ],
+              "median": 2598528.846153846,
+              "min": 2591932.6923076925,
+              "max": 2636644.230769231,
+              "mad": 6108.923076923005
+            }
+          },
+          "checksums": {
+            "mairg": [
+              65657279652,
+              65657279652,
+              65657279652,
+              65657279652,
+              65657279652,
+              65657279652,
+              65657279652,
+              65657279652,
+              65657279652,
+              65657279652,
+              65657279652
+            ],
+            "cpp": [
+              65657279652,
+              65657279652,
+              65657279652,
+              65657279652,
+              65657279652,
+              65657279652,
+              65657279652,
+              65657279652,
+              65657279652,
+              65657279652,
+              65657279652
+            ]
+          },
+          "mairg_over_cpp_ratio": 0.1542564246781648,
+          "cpp_over_mairg_speedup": 6.482712159875123,
+          "regression_over_25_percent": false,
+          "timing_scope": "prepared identical buffers; direct ctypes ABI; excludes parsing, validation, builds and serialization"
+        }
+      ],
+      "end_to_end": {
+        "rows": 10000,
+        "seed": 17,
+        "repetitions": 3,
+        "outputs": {
+          "uncached_errors": 1246,
+          "uncached_error_bytes": 655889446
+        },
+        "correctness": "pass",
+        "seconds": {
+          "mairg": {
+            "samples": [
+              0.335384625,
+              0.352466333,
+              0.331515
+            ],
+            "median": 0.335384625,
+            "min": 0.331515,
+            "max": 0.352466333,
+            "mad": 0.0038696249999999877
+          },
+          "cpp": {
+            "samples": [
+              0.33293475,
+              0.333871125,
+              0.34150025
+            ],
+            "median": 0.333871125,
+            "min": 0.33293475,
+            "max": 0.34150025,
+            "mad": 0.0009363749999999893
+          }
+        },
+        "commands": {
+          "mairg": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "/Users/null/work/mairg/benchmarks/run.py",
+            "--child",
+            "--workload",
+            "selective",
+            "--backend",
+            "mairg",
+            "--graph",
+            "/Users/null/work/mairg/examples/selective.mairg.json",
+            "--data",
+            "/var/folders/zd/w2dkn8s50gb3yx69z04m7cv80000gn/T/mairg-e2e-ks21eiey/events.jsonl",
+            "--compiler",
+            "/usr/bin/clang",
+            "--cpp-style",
+            "branching"
+          ],
+          "cpp": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "/Users/null/work/mairg/benchmarks/run.py",
+            "--child",
+            "--workload",
+            "selective",
+            "--backend",
+            "cpp",
+            "--graph",
+            "/Users/null/work/mairg/examples/selective.mairg.json",
+            "--data",
+            "/var/folders/zd/w2dkn8s50gb3yx69z04m7cv80000gn/T/mairg-e2e-ks21eiey/events.jsonl",
+            "--compiler",
+            "/usr/bin/clang",
+            "--cpp-style",
+            "branching"
+          ]
+        },
+        "timing_scope": "fresh Python process + identical JSONL parsing/validation/buffer preparation + backend build + kernel + JSON serialization",
+        "includes_compilation": true,
+        "input_generation_excluded": true
+      }
+    }
+  },
+  "requires_investigation": []
+}

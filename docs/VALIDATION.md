@@ -38,10 +38,10 @@ The isolated-wheel smoke installed the wheel into a fresh environment, removed i
 ## Integration evidence
 
 - The telemetry application produces total_requests=4, errors=2, slow_requests=2, total_bytes=6400, error_bytes=5000, max_latency=5000, weighted_score=27697 on the supplied example.
-- Its18-node source optimizes to11 nodes: one constant fold, two merged nodes, three dead nodes. Generated code has one row traversal and no intermediate column arrays.
-- All18 scalar operations and four reductions have direct catalog coverage, including bool overloads and unsigned boundaries.
+- Its 18-node source optimizes to 11 nodes: one constant fold, two merged nodes, three dead nodes. Generated code has one row traversal and no intermediate column arrays.
+- All 18 scalar operations and four reductions have direct catalog coverage, including bool overloads and unsigned boundaries.
 - Independent source/mathematical oracles, optimized/unoptimized interpretation/native code, and independent handwritten C++ agree.
--32 seeded randomized native cases,500 durable canonicalization trials, and another1,000 exploratory ID/order trials passed.
+- 32 seeded randomized native cases, 500 durable canonicalization trials, and another 1,000 exploratory ID/order trials passed.
 - Invalid unreachable state, excessive depth/nesting, bad final records, forged object metadata, stale patches, schema mismatches, and closed runtimes reject at their owners.
 - Native code contains positional identities and compiler-generated names; external names never become code or shell instructions.
 - Public compiled execution is synchronous. Trusted raw ctypes integration is explicitly outside the safety boundary. Native sandboxing is not claimed.

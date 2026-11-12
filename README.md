@@ -45,6 +45,8 @@ Read the [language specification](docs/SPEC.md) for the exact representation, li
 
 The project must demonstrate exact correctness, automatic dependency ordering/CSE/fusion, a real telemetry application, and a reproducible comparison with an independent optimized C++ implementation. Runtime parity with optimized native code is a useful result.
 
+**Measured on one ARM64 Mac:** the million-row telemetry kernel took 0.566 ms versus 0.568 ms for tuned C++; all three million-row workloads were within 2%. The selective kernel was 6.48x faster than an additional ordinary branching C++ implementation, while tuned C++ matched it. Cold end-to-end timings were essentially equal. [Full methodology and raw results](docs/COMPARISON.md).
+
 AI generation, token efficiency, repair success, and maintenance advantages require controlled model trials. Serialized source size is not token usage. A Python speedup does not establish a language-level advantage. Performance results are added after validation in [the comparison report](docs/COMPARISON.md).
 
 ## Boundaries

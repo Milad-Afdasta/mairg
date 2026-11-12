@@ -21,9 +21,9 @@ Goal: build a machine-first compiled language, useful telemetry application, and
 
 ## Checkpoint
 
-Current goal: final full suite/package verification, frozen-source official comparison, public GitHub publication and CI.
-Last verified evidence: all three new testers PASS; generic masked reductions resolved selective regression, independent hand-tuned C++ confirms parity opportunity; sanitizer and randomized tests pass on final lowering.
-Approach: freeze runtime source, verify all55 durable tests/type/lint/package gates, commit source, benchmark tuned primary and branching additional comparator, publish exact evidence and check remote CI.
+Current goal: publish the validated source/evidence and verify the four-job GitHub CI matrix.
+Last verified evidence:55 final tests pass in23.610s; isolated wheel/native/reference smoke passes; both clean-source benchmark reports match source1f37efaa9a3757bf79ab017d2221ff89db0093fa with exact correctness and no major regression. Million-row primary kernels within2% of tuned C++; additional branching selective comparator6.48x slower.
+Approach: commit documentation/raw reports, push existing branch, inspect remote CI through a finite12-minute window; diagnose actual failures rather than retry unchanged work.
 Blocker: none. Consecutive attempts without progress: 0.
 
 ## Instruction improvement
