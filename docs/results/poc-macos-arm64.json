@@ -1,0 +1,399 @@
+{
+  "scope": "practical application POC, not a language-level speed claim",
+  "metadata": {
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 17.0.0 (clang-1700.6.4.2)]",
+    "platform": "macOS-15.6.1-arm64-arm-64bit-Mach-O",
+    "sqlite": "3.53.4",
+    "server": "Waitress 3.0.2, four threads, loopback HTTP",
+    "command": [
+      "/Users/null/work/mairg/.venv/bin/python",
+      "comparison/run.py",
+      "--requests",
+      "60",
+      "--output",
+      "/tmp/mairg-poc-comparison.json"
+    ],
+    "rss_unit": "bytes",
+    "source_sha256": {
+      "examples/inventory/program.json": "125928335cbe9bbbbe1e13b2f2d6cb32cc26eb30b9bafa6488d8faab427e1bfe",
+      "examples/inventory/schema.json": "a8e9aed41d1c598fb9f665e37f93de09778af0b044b575a3d61f284213933fae",
+      "comparison/run.py": "f13f5e3b96777e9dabf7c2e0067d28a9fac51c1ab51fb989c812077d00b5fc3f",
+      "comparison/reference_inventory.py": "bd8f28f290607cf0d90c3e94cab866e10ae619e9f1c911e8429d653e286d5182"
+    },
+    "git_commit": "003d94949a5fbe561fecc092aadd52c1bd370559"
+  },
+  "correctness": {
+    "status": "pass",
+    "http_cases": [
+      {
+        "method": "GET",
+        "path": "/items",
+        "result": [
+          200,
+          []
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/items",
+        "result": [
+          200,
+          {
+            "id": 1,
+            "name": "O'Reilly café",
+            "stock": 10
+          }
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/items",
+        "result": [
+          400,
+          {
+            "error": {
+              "code": "invalid_name",
+              "message": "Name must contain non-whitespace text"
+            }
+          }
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/items",
+        "result": [
+          400,
+          {
+            "error": {
+              "code": "invalid_stock",
+              "message": "Stock must be nonnegative"
+            }
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/items/1",
+        "result": [
+          200,
+          {
+            "id": 1,
+            "name": "O'Reilly café",
+            "stock": 10
+          }
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/items/1",
+        "result": [
+          200,
+          {
+            "id": 1,
+            "name": "Coffee ☕",
+            "stock": 7
+          }
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/reservations",
+        "result": [
+          200,
+          {
+            "id": 1,
+            "item_id": 1,
+            "note": "customer's order",
+            "quantity": 2
+          }
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/reservations",
+        "result": [
+          409,
+          {
+            "error": {
+              "code": "insufficient_stock",
+              "message": "Item is missing or has insufficient stock"
+            }
+          }
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/reservations",
+        "result": [
+          400,
+          {
+            "error": {
+              "code": "invalid_quantity",
+              "message": "Quantity must be positive"
+            }
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/reservations",
+        "result": [
+          200,
+          [
+            {
+              "id": 1,
+              "item_id": 1,
+              "note": "customer's order",
+              "quantity": 2
+            }
+          ]
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/items/999",
+        "result": [
+          404,
+          {
+            "error": {
+              "code": "not_found",
+              "message": "Item does not exist"
+            }
+          }
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/items",
+        "result": [
+          200,
+          {
+            "id": 2,
+            "name": "temporary",
+            "stock": 0
+          }
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/items/2",
+        "result": [
+          200,
+          {
+            "id": 2,
+            "name": "temporary",
+            "stock": 0
+          }
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/items/1",
+        "result": [
+          400,
+          {
+            "error": {
+              "code": "sql_error",
+              "message": "FOREIGN KEY constraint failed"
+            }
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/items",
+        "result": [
+          200,
+          [
+            {
+              "id": 1,
+              "name": "Coffee ☕",
+              "stock": 5
+            }
+          ]
+        ]
+      }
+    ],
+    "rollback": "pass",
+    "restart_retains_data": "pass",
+    "normalization": "none"
+  },
+  "backends": {
+    "mairg": {
+      "sequential_http": {
+        "samples_ms": [
+          2.395667,
+          2.175666,
+          2.134334,
+          2.10325,
+          2.085834,
+          2.188,
+          2.471416,
+          2.185583,
+          2.284542,
+          2.084083,
+          2.369834,
+          2.217083,
+          2.171833,
+          2.162166,
+          2.125584,
+          2.343333,
+          2.145833,
+          2.33925,
+          2.106,
+          2.276,
+          2.072792,
+          2.263375,
+          2.132917,
+          2.132042,
+          2.073167,
+          2.101041,
+          2.333958,
+          2.128709,
+          2.231125,
+          2.359584,
+          2.340833,
+          2.173709,
+          2.14525,
+          2.175875,
+          2.384792,
+          2.859542,
+          2.192708,
+          2.161292,
+          2.103375,
+          2.152166,
+          2.143333,
+          2.117584,
+          2.203708,
+          2.302625,
+          2.607417,
+          2.163041,
+          2.121917,
+          2.120041,
+          2.272167,
+          2.43375,
+          2.180666,
+          2.175042,
+          2.095625,
+          2.366584,
+          2.136459,
+          2.132667,
+          2.101792,
+          2.259459,
+          2.333958,
+          2.161833
+        ],
+        "median_ms": 2.1743755,
+        "p95_ms": 2.471416,
+        "min_ms": 2.072792,
+        "max_ms": 2.859542
+      },
+      "concurrent_http_requests_per_second": 435.2532121246543,
+      "concurrent_clients": 4,
+      "timed_requests": 60,
+      "response_items": 31,
+      "fresh_process_cli": {
+        "samples_ms": [
+          134.4495000084862,
+          129.2206250363961,
+          131.4500829903409
+        ],
+        "median_ms": 131.4500829903409,
+        "p95_ms": 134.4495000084862,
+        "min_ms": 129.2206250363961,
+        "max_ms": 134.4495000084862
+      },
+      "startup_readiness_seconds": 0.12097154202638194,
+      "peak_rss_after_requests": 34996224,
+      "measurement_scope": "real HTTP + Waitress + app + SQLite read + JSON + client decode; no kernel isolation"
+    },
+    "python": {
+      "sequential_http": {
+        "samples_ms": [
+          0.561042,
+          0.534667,
+          0.540875,
+          0.512375,
+          0.522542,
+          0.519417,
+          0.678667,
+          0.563666,
+          0.516875,
+          0.518541,
+          0.777125,
+          0.544625,
+          0.667,
+          0.626166,
+          0.535833,
+          0.509209,
+          0.5655,
+          0.512334,
+          0.579875,
+          0.60875,
+          0.5375,
+          0.482,
+          0.519833,
+          0.532917,
+          0.503709,
+          0.505625,
+          0.523417,
+          0.508875,
+          0.596708,
+          0.568417,
+          0.926417,
+          0.631167,
+          0.586291,
+          0.503542,
+          0.644459,
+          0.623792,
+          0.576583,
+          0.527541,
+          0.55725,
+          0.502208,
+          0.521125,
+          0.521541,
+          0.713,
+          0.521791,
+          0.589292,
+          0.516541,
+          0.565875,
+          0.515667,
+          0.593625,
+          0.493875,
+          0.546334,
+          0.512583,
+          0.556667,
+          0.526625,
+          0.542125,
+          0.514,
+          0.509042,
+          0.521083,
+          0.698958,
+          0.516709
+        ],
+        "median_ms": 0.53525,
+        "p95_ms": 0.713,
+        "min_ms": 0.482,
+        "max_ms": 0.926417
+      },
+      "concurrent_http_requests_per_second": 2551.0610804329326,
+      "concurrent_clients": 4,
+      "timed_requests": 60,
+      "response_items": 31,
+      "fresh_process_cli": {
+        "samples_ms": [
+          77.49116700142622,
+          76.28845801809803,
+          74.16541699785739
+        ],
+        "median_ms": 76.28845801809803,
+        "p95_ms": 77.49116700142622,
+        "min_ms": 74.16541699785739,
+        "max_ms": 77.49116700142622
+      },
+      "startup_readiness_seconds": 0.07251525000901893,
+      "peak_rss_after_requests": 30916608,
+      "measurement_scope": "real HTTP + Waitress + app + SQLite read + JSON + client decode; no kernel isolation"
+    }
+  }
+}

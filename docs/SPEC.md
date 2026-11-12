@@ -1,6 +1,6 @@
 # MAIRG practical proof of concept
 
-Status: proposed exact specification for MAIRG-M4, model revision 4. No runtime edit until the three new specification reviewers approve the exact model. This supersedes the numeric-only product scope and the larger production-platform draft. The user's latest request is a practical POC.
+Status: approved and implemented POC contract for MAIRG-M4, model revision 4. All three new specification reviewers approved the exact model before runtime edits. This supersedes the numeric-only product scope and the larger production-platform draft. The user's latest request is a practical POC. This status update changes no language semantics.
 
 ## Success
 

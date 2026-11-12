@@ -1,0 +1,31 @@
+{
+  "scope": "MAIRG inventory directory build only; no direct-Python packaging comparison",
+  "platform": "macOS-15.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 17.0.0 (clang-1700.6.4.2)]",
+  "git_commit": "bbdfc769acaf342cbe2f99a18469280f323e54d7",
+  "method": "Three fresh output directories. Wall time includes interpreter launch, CLI parsing, source validation/compilation, runtime/dependency/asset copying, digest creation, import/describe smoke, and publication. Total bytes sum all regular-file contents including bundle.json, without filesystem metadata, Python interpreter, or mutable database. CLI bytes count payload only, excluding bundle.json.",
+  "samples": [
+    {
+      "milliseconds": 183.810333,
+      "total_bytes_including_manifest": 276414,
+      "total_files": 28,
+      "reported_payload_bytes_excluding_manifest": 273839,
+      "source_revision": "3b3cb5965e2994caef541af2de834825695a3651a9cac212f13f428431e8bf95"
+    },
+    {
+      "milliseconds": 176.819083,
+      "total_bytes_including_manifest": 276414,
+      "total_files": 28,
+      "reported_payload_bytes_excluding_manifest": 273839,
+      "source_revision": "3b3cb5965e2994caef541af2de834825695a3651a9cac212f13f428431e8bf95"
+    },
+    {
+      "milliseconds": 179.777583,
+      "total_bytes_including_manifest": 276414,
+      "total_files": 28,
+      "reported_payload_bytes_excluding_manifest": 273839,
+      "source_revision": "3b3cb5965e2994caef541af2de834825695a3651a9cac212f13f428431e8bf95"
+    }
+  ],
+  "median_ms": 179.777583
+}
